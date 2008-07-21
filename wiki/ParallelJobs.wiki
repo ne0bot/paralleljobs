@@ -1,0 +1,22 @@
+#summary Delphi Library for parallel process creation on all aplications.
+
+= ParallelJobs Library =
+
+ParallelJobs is a library that provide a easy way to create a parallel process on your aplication.
+
+Works like a simple win32 API call, as you can see below:
+
+begin
+  ParallelJobs(@MyProcess);
+end;
+
+This will create a parallel process that will execute MyProcess function.
+
+All controls and utilities are being implemented and still on development
+
+*Why use paralleljobs?*
+
+ParallelJobs on the current stage provide a very easy way to create a parallel process, like you can create using TThread, but without writing a lots of code.
+
+= Details =
+*version 2008.0.0.5*
