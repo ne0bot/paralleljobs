@@ -7,7 +7,7 @@ ParallelJobs is a library that provide a easy way to create a parallel process o
 Works like a simple win32 API call, as you can see below:
 
 begin
-  ParallelJobs(@MyProcess);
+  ParallelJob(@MyProcess);
 end;
 
 This will create a parallel process that will execute MyProcess function.
