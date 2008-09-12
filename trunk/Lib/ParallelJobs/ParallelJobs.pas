@@ -3,7 +3,7 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2008.0.0.5
+ *@version 2008.0.0.6
  *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
  *@copyright Copyright © 2008, DevPartners, Gilberto Saraiva
  *@homepage http://devpartners.projects.pro.br/forum/index.php?board=8.0
@@ -74,6 +74,7 @@ type
   }
   procedure ParallelJob(ASelf: TObject; ATarget: Pointer;
     AParam: Pointer = nil; ASafeSection: boolean = false); overload;
+
   { Note: Basic use of ParallelJobs structure
     * Direct operation
       @ATarget = The target to be called when job run
@@ -136,12 +137,34 @@ type
 
     procedure StartJobs;
     procedure StopJobs(AForce: boolean = false);
-    
+
+    function JobsCount: integer;
     function JobsIsRunning: Integer;
     function WaitForJobs(AWaitAll: boolean; AMilliseconds: DWORD): Integer;
 
     property Name: string read FName;
   end;
+
+  { Note: Basic use of ParallelJobs structure with JobGroup
+    * SelfMode operation with JobGroup
+      @AJobGroup = JobGroup reference
+      @ASelf = Object that contain the target
+      @ATarget = The target to be called when job run
+      @AParam = The pointer that will be pass as param to target
+      @ASafeSection = Auto safe section control managed by ParallelJobs.
+  }
+  procedure ParallelJob(AJobGroup: TJobsGroup; ASelf: TObject; ATarget: Pointer;
+    AParam: Pointer = nil; ASafeSection: boolean = false); overload;
+
+  { Note: Basic use of ParallelJobs structure with JobGroup
+    * Direct operation with JobGroup
+      @AJobGroup = JobGroup reference    
+      @ATarget = The target to be called when job run
+      @AParam = The pointer that will be pass as param to target
+      @ASafeSection = Auto safe section control managed by ParallelJobs.
+  }
+  procedure ParallelJob(AJobGroup: TJobsGroup; ATarget: Pointer;
+    AParam: Pointer = nil; ASafeSection: boolean = false); overload;
 
 implementation
 
@@ -282,7 +305,7 @@ type
   PParallelJobHolder = ^TParallelJobHolder;
   TParallelJobHolder = record
     Job: PParallelCall;
-    next: PParallelJobHolder;
+    prev, next: PParallelJobHolder;
   end;
 
 var
@@ -314,6 +337,7 @@ begin
   try
     New(pNew);
     pNew^.Job := AParallelJob;
+    pNew^.prev := nil;    
     pNew^.next := nil;
 
     if FirstParallelJobHolder = nil then
@@ -323,6 +347,7 @@ begin
     end else
     begin
       LastParallelJobHolder^.next := pNew;
+      pNew^.prev := LastParallelJobHolder;
       LastParallelJobHolder := pNew;
     end;
   finally
@@ -334,11 +359,10 @@ end;
 }
 procedure DestroyHolder(AParallelJob: PParallelCall);
 var
-  pWalk, pLast: PParallelJobHolder;
+  pWalk: PParallelJobHolder;
 begin
   LockVar(HolderLock);
   try
-    pLast := nil;
     pWalk := FirstParallelJobHolder;
     while pWalk <> nil do
       if pWalk^.Job = AParallelJob then
@@ -353,11 +377,14 @@ begin
         if CurrentParallelJobHolder = pWalk then
           CurrentParallelJobHolder := nil;
 
-        if pLast <> nil then
-          pLast^.next := pWalk^.next;
+        if pWalk^.prev <> nil then
+          pWalk^.prev^.next := pWalk^.next;
+
+        if pWalk^.next <> nil then
+          pWalk^.next^.prev := pWalk^.prev;
 
         if pWalk = LastParallelJobHolder then
-          LastParallelJobHolder := pLast;
+          LastParallelJobHolder := pWalk^.prev;
 
         if pWalk = FirstParallelJobHolder then
           FirstParallelJobHolder := pWalk^.next;
@@ -365,10 +392,7 @@ begin
         Dispose(pWalk);
         pWalk := nil;
       end else
-      begin
-        pLast := pWalk;
         pWalk := pWalk^.next;
-      end;
   finally
     UnlockVar(HolderLock);
   end;
@@ -408,7 +432,7 @@ begin
   TerminateNullJob := False;    
 end;
 
-{ Note: Count the number of All Jobs exists on the memory. 
+{ Note: Count the number of All Jobs exists on the memory.
 }
 function ParallelJobsCount: integer;
 var
@@ -531,7 +555,8 @@ function InitParallelJob(AMode: TParallelCallMode; ASelf, ATarget,
 var
   dwNull: DWORD;
 begin
-  New(Result);
+  IsMultiThread := true;
+  Result := VirtualAlloc(nil, 64, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   FillChar(Result^, SizeOf(TParallelCall), 0);
 
   if CurrentGroup <> nil then
@@ -582,7 +607,7 @@ begin
     DestroyHolder(ParallelCall);
     ParallelCall^.Hnd := 0;
     
-    Dispose(ParallelCall);
+    VirtualFree(ParallelCall, 0, MEM_RELEASE);
     CloseHandle(hThread);
   end;
   Dispose(AParam);
@@ -876,6 +901,13 @@ begin
   UpdateHandles;  
 end;
 
+{ Note: Return the count of all jobs of the Group
+}
+function TJobsGroup.JobsCount: integer;
+begin
+  Result := FJobsCount;
+end;
+
 { Note: Return the count of jobs of the Group still running
 }
 function TJobsGroup.JobsIsRunning: Integer;
@@ -900,6 +932,36 @@ begin
     AWaitAll, AMilliseconds);
 end;
 
+{ Note: Basic use of ParallelJobs structure with JobGroupd
+  * SelfMode operation with JobGroupd
+  Initialize the Job and attach it on the group
+}
+procedure ParallelJob(AJobGroup: TJobsGroup; ASelf: TObject; ATarget: Pointer;
+  AParam: Pointer = nil; ASafeSection: boolean = false);
+begin
+  AJobGroup.InitJobCapture;
+  try
+    ParallelJob(ASelf, ATarget, AParam, ASafeSection);
+  finally
+    AJobGroup.EndJobCapture;
+  end;
+end;
+
+{ Note: Basic use of ParallelJobs structure with JobGroupd
+  * Direct operation with JobGroupd
+  Initialize the Job and attach it on the group
+}
+procedure ParallelJob(AJobGroup: TJobsGroup; ATarget: Pointer;
+  AParam: Pointer = nil; ASafeSection: boolean = false);
+begin
+  AJobGroup.InitJobCapture;
+  try
+    ParallelJob(ATarget, AParam, ASafeSection);
+  finally
+    AJobGroup.EndJobCapture;
+  end;
+end;
+
 initialization
 
 finalization
@@ -907,3 +969,5 @@ finalization
   WaitAllParallelJobsFinalization;
 
 end.
+
+
