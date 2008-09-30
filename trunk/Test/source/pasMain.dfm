@@ -14,7 +14,7 @@ object frmMain: TfrmMain
   OnClose = FormClose
   DesignSize = (
     668
-    349)
+    351)
   PixelsPerInch = 96
   TextHeight = 13
   object pnlTArea: TPanel

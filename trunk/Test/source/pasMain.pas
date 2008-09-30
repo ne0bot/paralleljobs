@@ -48,16 +48,21 @@ var
 
 procedure CentralLoop(AMemo: PMemo; AID: string);
 var
+  iId: integer;
   cTime, cSleep, cTimeout: Cardinal;
 begin
   Randomize;
-  cSleep := Random(1000)+1;
+  iId := StrToInt(AID);
+  cSleep := Random(1000) + 1;
   cTimeout := Random(5000) + 10;
   cTime := GetTickCount + cTimeout;
-  AMemo^.Lines.Add('#' + AID + ' START');  
+  AMemo^.Lines.Add('#' + AID + ' START');
   while (cTime > GetTickCount) and not CurrentJobTerminated do
   begin
-    AMemo^.Lines.Add('#' + AID + ' ' + TimeToStr(Now) + ' - ' + IntToStr(cSleep));
+    { Note: Memo add line is performed by SendMessage
+    }
+    AMemo^.Lines.Add(StringOfChar('_', iId * 3) + '#' + AID + ' ' +
+      TimeToStr(Now) + ' - ' + IntToStr(cSleep));
     Sleep(cSleep);
   end;
   AMemo^.Lines.Add('#' + AID + ' END');    
@@ -174,9 +179,6 @@ end;
 
 procedure TfrmMain.btnStopTest3Click(Sender: TObject);
 begin
-  { Note: until the implementation of a new state system,
-    will leak 1 byte of memory per job for StopJobs calls.
-  }
   if Test3Group <> nil then
     Test3Group.StopJobs;
 end;
@@ -189,7 +191,9 @@ end;
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   TerminateAllParallelJobs;
-  WaitAllParallelJobsFinalization;
+  { Note: To avoid Memo add line vcl deadlock with SendMessage.
+  }
+  WaitAllParallelJobsFinalization(Application.ProcessMessages);
 end;
 
 procedure TfrmMain.pnlTAreaResize(Sender: TObject);
