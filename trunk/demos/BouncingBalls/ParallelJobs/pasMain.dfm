@@ -1,9 +1,10 @@
 object frmMain: TfrmMain
   Left = 433
   Top = 231
-  Width = 328
-  Height = 277
+  BorderStyle = bsDialog
   Caption = 'Bouncing Ball - ParallelJobs'
+  ClientHeight = 250
+  ClientWidth = 320
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -13,13 +14,15 @@ object frmMain: TfrmMain
   OldCreateOrder = False
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object pnlInfo: TPanel
     Left = 0
-    Top = 0
+    Top = 220
     Width = 320
     Height = 30
+    Align = alBottom
     BevelInner = bvRaised
     BevelOuter = bvLowered
     TabOrder = 0
@@ -60,14 +63,5 @@ object frmMain: TfrmMain
       Caption = 'Clean'
       OnClick = btnCleanClick
     end
-  end
-  object pnlDisplay: TPanel
-    Left = 0
-    Top = 30
-    Width = 320
-    Height = 220
-    BevelOuter = bvNone
-    Color = clBlack
-    TabOrder = 1
   end
 end
