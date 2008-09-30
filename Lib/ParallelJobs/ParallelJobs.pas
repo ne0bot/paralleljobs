@@ -3,7 +3,7 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2008.0.0.7
+ *@version 2008.0.0.8
  *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
  *@copyright Copyright © 2008, DevPartners, Gilberto Saraiva
  *@homepage http://devpartners.projects.pro.br/forum/index.php?board=8.0
@@ -295,7 +295,7 @@ type
       2 = Terminate Requested
       3 = Terminated
   }
-  TParallelCallTerminateState = Byte;
+  TParallelCallTerminateState = Integer;
 
   PParallelCall = ^TParallelCall;
   TParallelCall = packed record
@@ -433,7 +433,7 @@ begin
 
       if AParallelJob^.Terminated = 0 then
       begin
-        AParallelJob^.Terminated := 1;
+        InterlockedIncrement(AParallelJob^.Terminated);
         if AParallelJob^.GState = jgsStopped then
           ResumeThread(hThread);
 
@@ -559,7 +559,7 @@ asm
 @End:
   mov eax,[ebx+$26]
   call UnlockVar
-  mov byte ptr [ebx+$2A],$02
+  lock add [ebx+$2A],$01
   mov eax,AParam
   push eax
   call EndParrallelJob
@@ -612,24 +612,17 @@ type
 { Note: Finalize the job structure and allocations
 }
 function ParallelEndParrallelJob(AParam: PParallelEnd): Integer; stdcall;
-var
-  hThread: THandle;
 begin
   with AParam^ do
   begin
     if ParallelCall^.Group <> nil then
       ParallelCall^.Group.DelJob(ParallelCall, true);
 
-    hThread := ParallelCall^.Hnd;
     TerminateNullJob := true;
     DestroyHolder(ParallelCall);
-    ParallelCall^.Hnd := 0;
-    
-    VirtualFree(ParallelCall, 0, MEM_RELEASE);
-    CloseHandle(hThread);
   end;
-  Dispose(AParam);
-  Result := 0;
+  AParam^.Hnd := 0;
+  Result := 0;     
 end;
 
 { Note: Call finalize on a other thread
@@ -647,6 +640,13 @@ begin
   pNew^.Hnd := CreateThread(nil, 0, @ParallelEndParrallelJob,
     pNew, CREATE_SUSPENDED, dwNull);
   ResumeThread(pNew^.Hnd);
+
+  while pNew^.Hnd <> 0 do
+    Sleep(0);
+
+  CloseHandle(pNew^.Hnd);
+  VirtualFree(pNew, 0, MEM_RELEASE);
+  Dispose(pNew);
 end;
 
 { Note: Basic use of ParallelJobs structure
@@ -814,24 +814,12 @@ end;
 { Note: Ends and clean the Job list from Group
 }
 procedure TJobsGroup.Clear;
-var
-  pWalk, pPrev: PJobItem;
 begin
-  pWalk := FLastJob;
-  while pWalk <> nil do
-  begin
-    pPrev := pWalk^.prev;
-    EndParrallelJob(PParallelCall(pWalk^.Job));
-    pWalk := pPrev;
-  end;
-
-  while FFirstJob <> nil do ;
+  while FFirstJob <> nil do
+    DelJob(FFirstJob^.Job);
 
   Lock;
   try
-    FJobsCount := 0;
-    FFirstJob := nil;
-    FLastJob := nil;
     SetLength(FJobsHandles, 0);
   finally
     Unlock;
@@ -938,9 +926,9 @@ begin
           pWalk^.next^.prev := pWalk^.prev;
 
         Dispose(pWalk);
-        pWalk := nil;
         FJobsCount := FJobsCount - 1;
         Sleep(0);
+        Break;
       end else
         pWalk := pWalk^.next;
   finally
@@ -1056,5 +1044,3 @@ finalization
   WaitAllParallelJobsFinalization;
 
 end.
-
-
