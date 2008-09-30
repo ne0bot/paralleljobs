@@ -1,7 +1,7 @@
 program AppTest;
 
 uses
-  Fastmm4,
+  FastMM4,
   Forms,
   pasMain in 'pasMain.pas' {frmMain},
   ParallelJobs in '..\..\Lib\ParallelJobs\ParallelJobs.pas';

@@ -17,8 +17,8 @@ M=0
 N=1
 O=1
 P=1
-Q=0
-R=0
+Q=1
+R=1
 S=0
 T=0
 U=0
@@ -134,7 +134,9 @@ OriginalFilename=
 ProductName=
 ProductVersion=1.0.0.0
 Comments=
+LastCompiledTime=30/09/2008 22:31:29
 [Excluded Packages]
+C:\Arquivos de programas\Borland\Delphi7\Projects\Bpl\JvMMD7D.bpl=JVCL Multimedia and Image Components
 c:\arquivos de programas\borland\delphi7\Projects\Bpl\VirtualTreesD7D.bpl=Virtual Treeview design time package
 [HistoryLists\hlUnitAliases]
 Count=1

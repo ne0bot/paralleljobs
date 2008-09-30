@@ -3,7 +3,7 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2008.0.0.6
+ *@version 2008.0.0.7
  *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
  *@copyright Copyright © 2008, DevPartners, Gilberto Saraiva
  *@homepage http://devpartners.projects.pro.br/forum/index.php?board=8.0
@@ -87,7 +87,11 @@ type
   function ParallelJobsCount: integer;
 
   procedure TerminateAllParallelJobs(AForce: boolean = false);
-  procedure WaitAllParallelJobsFinalization;
+
+type
+  TWaitProcessNotify = procedure of object;
+
+  procedure WaitAllParallelJobsFinalization(ANotify: TWaitProcessNotify = nil);
 
   function CurrentJobId: DWORD;
   function CurrentJobHandle: THandle;
@@ -216,34 +220,31 @@ begin
   end;
 end;
 
-{$W-}
 { Note: basic lock system
   Lock bool var
 }
 procedure LockVar(var AVar: Boolean);
-  function LockCheck(var AVar: Boolean): Boolean;
-  asm
-    MOV  ECX, EAX 
-    MOV  AL,  False
-    MOV  DL,  True
-    LOCK CMPXCHG [ECX], DL
-  end;
-begin
-  while LockCheck(AVar) do
-  begin
-    Sleep(0);
-    if not LockCheck(AVar) then Break;
-    Sleep(1);
-  end;
+asm
+  push ebx
+  mov ebx, eax
+@@test:
+  push $01
+  call Sleep
+  mov ecx, ebx
+  db $B0,$00,$B2,$01
+  lock cmpxchg [ecx], dl
+  test al, al
+  jnz @@test
+  pop ebx
+  ret
 end;
 
 { Note: Unlock bool var
 }
-procedure UnlockVar(var AVar: Boolean);
-begin
-  AVar := False;
+procedure UnlockVar(var AVar: boolean);
+asm
+  mov byte ptr [eax], $00
 end;
-{$W+}
 
 var
   { Note: Hold the Current Group, for add job to group
@@ -252,6 +253,19 @@ var
       if not job will be added to the current group.
   }
   CurrentGroup: TJobsGroup = nil;
+
+  { Note: Support for unique Group name system.
+  }
+type
+  PJobsGroupHolder = ^TJobsGroupHolder;
+  TJobsGroupHolder = record
+    JobsGroupName: string;
+    prev, next: PJobsGroupHolder;
+  end;
+
+var
+  FirstJobsGroupHolder : PJobsGroupHolder = nil;
+  LastJobsGroupHolder  : PJobsGroupHolder = nil;
 
 { Note: Setup the thunk.
   Specific hardcoded for paralleljobs needs
@@ -327,7 +341,7 @@ var
   procedure TerminateParrallelJob(AParallelJob: PParallelCall;
     AForce: boolean = false); forward;
 
-{ Note: Create the a holder for a Job
+{ Note: Create a Job holder
 }
 procedure CreateHolder(AParallelJob: PParallelCall);
 var
@@ -337,7 +351,7 @@ begin
   try
     New(pNew);
     pNew^.Job := AParallelJob;
-    pNew^.prev := nil;    
+    pNew^.prev := nil;
     pNew^.next := nil;
 
     if FirstParallelJobHolder = nil then
@@ -428,8 +442,8 @@ begin
             Sleep(0);
       end;
     end;
-        
-  TerminateNullJob := False;    
+
+  TerminateNullJob := False;
 end;
 
 { Note: Count the number of All Jobs exists on the memory.
@@ -473,10 +487,17 @@ end;
 
 { Note: Wait for all jobs finalization
 }
-procedure WaitAllParallelJobsFinalization;
+procedure WaitAllParallelJobsFinalization(ANotify: TWaitProcessNotify = nil);
 begin
-  while FirstParallelJobHolder <> nil do
-    Sleep(0);
+  if Assigned(ANotify) then
+    while FirstParallelJobHolder <> nil do
+    begin
+      ANotify;
+      Sleep(1);
+    end
+  else
+    while FirstParallelJobHolder <> nil do
+      Sleep(1);
 end;
 
 { Note: Return the Job holder by ID
@@ -516,11 +537,8 @@ asm
   cmp al,0
   jz @Init
 @CheckSafeSection:
-  mov ecx,[ebx+$26]
-  mov al,[ecx]
-  cmp al,0
-  jnz @CheckSafeSection
-  mov [ecx],1
+  mov eax,[ebx+$26]
+  call LockVar
 @Init:
   mov al,[ebx]
   cmp al,0
@@ -539,8 +557,8 @@ asm
   mov Result,eax
   pop eax
 @End:
-  mov ecx,[ebx+$26]
-  mov [ecx],0
+  mov eax,[ebx+$26]
+  call UnlockVar
   mov byte ptr [ebx+$2A],$02
   mov eax,AParam
   push eax
@@ -694,11 +712,79 @@ begin
     Result := pHolder^.Job^.Terminated > 0;
 end;
 
+{ Note: JobsGroup Unique Name system
+}
+function CreateJobsGroupHolder(AJobsGroupName: string): boolean;
+var
+  pNew, pWalk: PJobsGroupHolder;
+begin
+  Result := True;
+  pWalk := FirstJobsGroupHolder;
+  while pWalk <> nil do
+  begin
+    if pWalk^.JobsGroupName = AJobsGroupName then
+    begin
+      Result := False;
+      Exit;
+    end;
+    pWalk := pWalk^.next;
+  end;
+
+  New(pNew);
+  pNew^.JobsGroupName := AJobsGroupName;
+  pNew^.prev := nil;
+  pNew^.next := nil;
+
+  if FirstJobsGroupHolder = nil then
+  begin
+    FirstJobsGroupHolder := pNew;
+    LastJobsGroupHolder := pNew;
+  end else
+  begin
+    LastJobsGroupHolder^.next := pNew;
+    pNew^.prev := LastJobsGroupHolder;
+    LastJobsGroupHolder := pNew;
+  end;
+end;
+
+procedure DestroyJobsGroupHolder(AJobsGroupName: string);
+var
+  pWalk, pFree: PJobsGroupHolder;
+begin
+  pWalk := FirstJobsGroupHolder;
+  while pWalk <> nil do
+  begin
+    if pWalk^.JobsGroupName = AJobsGroupName then
+    begin
+      pFree := pWalk;
+      if pWalk^.prev <> nil then
+        pWalk^.prev^.next := pWalk^.next;
+
+      if pWalk^.next <> nil then
+        pWalk^.next^.prev := pWalk^.prev;
+
+      if pWalk = LastJobsGroupHolder then
+        LastJobsGroupHolder := pWalk^.prev;
+
+      if pWalk = FirstJobsGroupHolder then
+        FirstJobsGroupHolder := pWalk^.next;
+
+      Dispose(pFree);
+      Break;
+    end;
+    pWalk := pWalk^.next;
+  end;
+end;
+
 { TJobsGroup }
 
 constructor TJobsGroup.Create(AName: string);
 begin
   inherited Create;
+
+  Assert(CreateJobsGroupHolder(AName),
+    'A JobsGroup named '''+AName+''' already exists.');
+
   FLock := false;
   FName := AName;
   Clear;
@@ -707,6 +793,7 @@ end;
 destructor TJobsGroup.Destroy;
 begin
   Clear;
+  DestroyJobsGroupHolder(Name);  
   inherited;
 end;
 
