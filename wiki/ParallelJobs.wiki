@@ -19,4 +19,9 @@ All controls and utilities are being implemented and still on development
 ParallelJobs on the current stage provide a very easy way to create a parallel process, like you can create using TThread, but without writing a lots of code.
 
 = Details =
-*version 2008.0.0.5*
+*version 2008.0.0.8*
+
+= Suggestions =
+
+Brazilian Mutitask Learning Tool:
+http://code.google.com/p/peebles/
