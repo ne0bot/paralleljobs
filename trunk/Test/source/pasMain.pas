@@ -61,7 +61,7 @@ begin
   begin
     { Note: Memo add line is performed by SendMessage
     }
-    AMemo^.Lines.Add(StringOfChar('_', iId * 3) + '#' + AID + ' ' +
+    AMemo^.Lines.Add(StringOfChar('_', iId * 2) + '#' + AID + ' ' +
       TimeToStr(Now) + ' - ' + IntToStr(cSleep));
     Sleep(cSleep);
   end;

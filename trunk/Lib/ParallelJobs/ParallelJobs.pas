@@ -3,7 +3,7 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2008.0.0.8
+ *@version 2008.0.0.9
  *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
  *@copyright Copyright © 2008, DevPartners, Gilberto Saraiva
  *@homepage http://devpartners.projects.pro.br/forum/index.php?board=8.0
@@ -127,6 +127,7 @@ type
     FLock        : boolean;
     procedure AddJob(AJob: Pointer);
     procedure DelJob(AJob: Pointer; AInternalEnd: boolean = false);
+    function GetJobItem(index: integer): PJobItem;
   protected
     procedure UpdateHandles;
     procedure Lock;
@@ -144,8 +145,11 @@ type
 
     function JobsCount: integer;
     function JobsIsRunning: Integer;
-    function WaitForJobs(AWaitAll: boolean; AMilliseconds: DWORD): Integer;
+    function WaitForJobs(AWaitAll: boolean; AMilliseconds: DWORD): DWORD;
 
+    procedure RemoveJob(AIndex: integer);
+
+    property Jobs[index: integer]: PJobItem read GetJobItem;
     property Name: string read FName;
   end;
 
@@ -937,6 +941,18 @@ begin
   UpdateHandles;   
 end;
 
+{ Note: Get job from Group
+}
+function TJobsGroup.GetJobItem(index: integer): PJobItem;
+begin
+  Result := FFirstJob;
+  while index > 0 do
+  begin
+    Result := Result^.next;
+    Dec(index);
+  end;
+end;
+
 { Note: Start all jobs of the Group
 }
 procedure TJobsGroup.StartJobs;
@@ -1001,10 +1017,17 @@ end;
 
 { Note: Simplify the events capture from jobs thread
 }
-function TJobsGroup.WaitForJobs(AWaitAll: boolean; AMilliseconds: DWORD): Integer;
+function TJobsGroup.WaitForJobs(AWaitAll: boolean; AMilliseconds: DWORD): DWORD;
 begin
   Result := WaitForMultipleObjects(Length(FJobsHandles), @FJobsHandles,
     AWaitAll, AMilliseconds);
+end;
+
+{ Note: Remove a Job from Group
+}
+procedure TJobsGroup.RemoveJob(AIndex: integer);
+begin
+  DelJob(Jobs[AIndex]^.Job);
 end;
 
 { Note: Basic use of ParallelJobs structure with JobGroupd
