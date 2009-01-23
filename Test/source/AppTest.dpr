@@ -1,10 +1,10 @@
 program AppTest;
 
 uses
+  ParallelJobs in '..\..\Lib\ParallelJobs\ParallelJobs.pas',
   FastMM4,
   Forms,
-  pasMain in 'pasMain.pas' {frmMain},
-  ParallelJobs in '..\..\Lib\ParallelJobs\ParallelJobs.pas';
+  pasMain in 'pasMain.pas' {frmMain};
 
 {$R *.res}
 

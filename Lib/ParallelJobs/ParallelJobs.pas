@@ -176,8 +176,6 @@ type
 
 implementation
 
-uses Math;
-
 type
   { Note: Safe Section holder type
   }
@@ -222,6 +220,30 @@ begin
       Result := @SafeFlag;
     end;
   end;
+end;
+
+{ Note: Check Ref to free Safe Section
+}
+procedure SafeSectionInfoFlagFree(ASelf, ATarget: Pointer);
+var
+  i: integer;
+  arSSI: array of TSafeSectionInfo;
+begin
+  for i := 0 to High(SafeSectionInfo) do
+    with SafeSectionInfo[i] do
+      if (ASelf = Self) and (ATarget = Target) then
+        RefsCount := RefsCount - 1;
+
+  for i := 0 to High(SafeSectionInfo) do
+    if SafeSectionInfo[i].RefsCount > 0 then
+    begin
+      SetLength(arSSI, Length(arSSI) + 1);
+      arSSI[High(arSSI)] := SafeSectionInfo[i];
+    end;
+  SetLength(SafeSectionInfo, Length(arSSI));
+
+  for i := 0 to High(arSSI) do
+    SafeSectionInfo[i] := arSSI[i];
 end;
 
 { Note: basic lock system
@@ -591,6 +613,7 @@ begin
   Result^.Mode := AMode;
   case AMode of
     pcmSelfMode : begin
+      Result^.Call := ATarget;
       SetupThunk(Result^.Thunk, ASelf, ATarget, AParam);
     end;
     pcmDirect   : begin
@@ -623,6 +646,10 @@ begin
       ParallelCall^.Group.DelJob(ParallelCall, true);
 
     TerminateNullJob := true;
+    case ParallelCall^.Mode of
+      pcmSelfMode : SafeSectionInfoFlagFree(ParallelCall^.Thunk.aV, ParallelCall^.Call);
+      pcmDirect   : SafeSectionInfoFlagFree(nil, ParallelCall^.Call);
+    end;
     DestroyHolder(ParallelCall);
   end;
   AParam^.Hnd := 0;
