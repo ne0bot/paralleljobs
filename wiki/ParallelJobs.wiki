@@ -23,5 +23,5 @@ ParallelJobs on the current stage provide a very easy way to create a parallel p
 
 = Suggestions =
 
-Brazilian Mutitask Learning Tool:
+Brazilian Multi-task Learning Tool:
 http://code.google.com/p/peebles/
