@@ -183,6 +183,9 @@ procedure TfrmMain.btnCleanClick(Sender: TObject);
 begin
   Jobs.Clear;
   lblInfo.Caption := 'Balls count: 0';
+  CircleDrawBase.Buffer.Canvas.Brush.Color := clBlack;
+  CircleDrawBase.Buffer.Canvas.FillRect(CircleDrawBase.Buffer.Canvas.ClipRect);
+  Invalidate;
 end;
 
 procedure TfrmMain.FormShow(Sender: TObject);
