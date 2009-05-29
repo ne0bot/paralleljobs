@@ -180,7 +180,7 @@ end;
 procedure TfrmMain.btnStopTest3Click(Sender: TObject);
 begin
   if Test3Group <> nil then
-    Test3Group.StopJobs;
+    Test3Group.StopJobs(Application.ProcessMessages);
 end;
 
 procedure TfrmMain.btn1Click(Sender: TObject);
