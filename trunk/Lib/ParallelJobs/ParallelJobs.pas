@@ -3,7 +3,7 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2008.0.0.9
+ *@version 2008.0.0.10
  *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
  *@copyright Copyright © 2008, DevPartners, Gilberto Saraiva
  *@homepage http://devpartners.projects.pro.br/forum/index.php?board=8.0
@@ -91,7 +91,7 @@ type
 type
   TWaitProcessNotify = procedure of object;
 
-  procedure WaitAllParallelJobsFinalization(ANotify: TWaitProcessNotify = nil);
+  procedure WaitAllParallelJobsFinalization(AWaitNotify: TWaitProcessNotify = nil);
 
   function CurrentJobId: DWORD;
   function CurrentJobHandle: THandle;
@@ -141,7 +141,7 @@ type
     procedure EndJobCapture;
 
     procedure StartJobs;
-    procedure StopJobs(AForce: boolean = false);
+    procedure StopJobs(AWaitNotify: TWaitProcessNotify = nil; AForce: boolean = false);
 
     function JobsCount: integer;
     function JobsIsRunning: Integer;
@@ -513,12 +513,12 @@ end;
 
 { Note: Wait for all jobs finalization
 }
-procedure WaitAllParallelJobsFinalization(ANotify: TWaitProcessNotify = nil);
+procedure WaitAllParallelJobsFinalization(AWaitNotify: TWaitProcessNotify = nil);
 begin
-  if Assigned(ANotify) then
+  if Assigned(AWaitNotify) then
     while FirstParallelJobHolder <> nil do
     begin
-      ANotify;
+      AWaitNotify;
       Sleep(1);
     end
   else
@@ -548,7 +548,7 @@ begin
   end;
 end;
 
-{ Note: forwarding EndParallelJob to ParallelWorker auto free
+{ Note: Forwarding EndParallelJob to ParallelWorker auto free
 }
 procedure EndParrallelJob(AParallelJob: PParallelCall;
   AEnd: boolean = false); forward;
@@ -656,6 +656,12 @@ begin
   Result := 0;     
 end;
 
+{ Note: When caller and job has some relation we need to enable a notify to
+  avoid some deadlocks.
+}
+var
+  EndParrallelJobWaitNotify: TWaitProcessNotify;
+
 { Note: Call finalize on a other thread
 }
 procedure EndParrallelJob(AParallelJob: PParallelCall; AEnd: boolean = false);
@@ -673,7 +679,11 @@ begin
   ResumeThread(pNew^.Hnd);
 
   while pNew^.Hnd <> 0 do
+  begin
+    if Assigned(EndParrallelJobWaitNotify) then
+      EndParrallelJobWaitNotify;
     Sleep(0);
+  end;
 
   CloseHandle(pNew^.Hnd);
   VirtualFree(pNew, 0, MEM_RELEASE);
@@ -1002,10 +1012,11 @@ end;
 
 { Note: Stop all jobs of the Group
 }
-procedure TJobsGroup.StopJobs(AForce: boolean = false);
+procedure TJobsGroup.StopJobs(AWaitNotify: TWaitProcessNotify = nil; AForce: boolean = false);
 var
   pWalk: PJobItem;
 begin
+  EndParrallelJobWaitNotify := AWaitNotify;
   pWalk := FFirstJob;
   while pWalk <> nil do
   begin
