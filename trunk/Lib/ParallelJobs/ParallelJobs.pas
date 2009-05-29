@@ -562,7 +562,7 @@ asm
   mov al,[ebx+$25]
   cmp al,0
   jz @Init
-@CheckSafeSection:
+@CheckSafeSectionInit:
   mov eax,[ebx+$26]
   call LockVar
 @Init:
@@ -582,9 +582,13 @@ asm
   call ecx
   mov Result,eax
   pop eax
-@End:
+@CheckSafeSectionEnd:
+  mov al,[ebx+$25]
+  cmp al,0
+  jz @End
   mov eax,[ebx+$26]
   call UnlockVar
+@End:
   lock add [ebx+$2A],$01
   mov eax,AParam
   push eax
@@ -622,7 +626,10 @@ begin
     end;
   end;
   Result^.SafeSection := ASafeSection;
-  Result^.SafeFlag := SafeSectionInfoFlag(ASelf, ATarget);
+  if ASafeSection then
+    Result^.SafeFlag := SafeSectionInfoFlag(ASelf, ATarget)
+  else
+    Result^.SafeFlag := nil;
   Result^.Terminated := 0;
 
   Result^.Hnd := CreateThread(nil, 0, @ParallelWorker,
@@ -646,10 +653,12 @@ begin
       ParallelCall^.Group.DelJob(ParallelCall, true);
 
     TerminateNullJob := true;
-    case ParallelCall^.Mode of
-      pcmSelfMode : SafeSectionInfoFlagFree(ParallelCall^.Thunk.aV, ParallelCall^.Call);
-      pcmDirect   : SafeSectionInfoFlagFree(nil, ParallelCall^.Call);
-    end;
+    if ParallelCall^.SafeSection then
+      case ParallelCall^.Mode of
+        pcmSelfMode : SafeSectionInfoFlagFree(ParallelCall^.Thunk.aV, ParallelCall^.Call);
+        pcmDirect   : SafeSectionInfoFlagFree(nil, ParallelCall^.Call);
+      end;
+
     DestroyHolder(ParallelCall);
   end;
   AParam^.Hnd := 0;
