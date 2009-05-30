@@ -2,16 +2,14 @@
 
 = ParallelJobs Library =
 
-ParallelJobs is a library that provide a easy way to create a parallel process on your aplication.
+ParallelJobs is a library that provide a easy way to create a parallel process on your application.
 
-Works like a simple win32 API call, as you can see below:
-
+Works like a simple Win32 API call, as you can see below:
 {{{
 begin
   ParallelJob(@MyProcess);
 end;
 }}}
-
 This will create a parallel process that will execute MyProcess function.
 
 All controls and utilities are being implemented and still on development
@@ -26,4 +24,4 @@ ParallelJobs on the current stage provide a very easy way to create a parallel p
 = Suggestions =
 
 Brazilian Multi-task Learning Tool:
-http://code.google.com/p/peebles/
+ http://code.google.com/p/peebles/
