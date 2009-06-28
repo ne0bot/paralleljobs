@@ -574,7 +574,7 @@ asm
   lea ecx,[ebx+$01]
   call ecx
   mov Result,eax
-  jmp @End
+  jmp @CheckSafeSectionEnd
 @Direct:
   mov ecx,[ebx+$10]
   mov eax,[ebx+$14]

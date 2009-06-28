@@ -63,5 +63,14 @@ object frmMain: TfrmMain
       Caption = 'Clean'
       OnClick = btnCleanClick
     end
+    object btnAdd100: TButton
+      Left = 164
+      Top = 8
+      Width = 49
+      Height = 16
+      Caption = 'Add 100'
+      TabOrder = 0
+      OnClick = btnAdd100Click
+    end
   end
 end
