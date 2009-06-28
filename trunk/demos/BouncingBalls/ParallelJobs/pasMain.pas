@@ -19,12 +19,14 @@ type
     btnSwitchDMode: TSpeedButton;
     btnAddBall: TSpeedButton;
     btnClean: TSpeedButton;
+    btnAdd100: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btnAddBallClick(Sender: TObject);
     procedure btnSwitchDModeClick(Sender: TObject);
     procedure btnCleanClick(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure btnAdd100Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -193,6 +195,14 @@ begin
   if Tag = 0 then
     ParallelJob(Self, @TfrmMain.DrawFlusher, nil);
   Tag := 1;
+end;
+
+procedure TfrmMain.btnAdd100Click(Sender: TObject);
+var
+  i: integer;
+begin
+  for i := 1 to 100 do
+    btnAddBallClick(nil);
 end;
 
 end.
