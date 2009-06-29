@@ -3,10 +3,10 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2008.0.0.11
+ *@version 2009.0.1.12
  *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
- *@copyright Copyright © 2008, DevPartners, Gilberto Saraiva
- *@homepage http://devpartners.projects.pro.br/forum/index.php?board=8.0
+ *@copyright Copyright © 2009, DevPartners, Gilberto Saraiva
+ *@homepage http://code.google.com/p/paralleljobs/
  *
  * License: MPL 1.1
  * http://www.mozilla.org/MPL/MPL-1.1.html
@@ -26,7 +26,7 @@ unit ParallelJobs;
  * The Original Code is ParallelJobs.pas, released: 04 july 2008.
  *
  * The Initial Developer of the Original Code is Gilberto Saraiva.
- * Portions created by Gilberto Saraiva are Copyright (C) 2008 -
+ * Portions created by Gilberto Saraiva are Copyright (C) 2009 -
  * Gilberto Saraiva. All Rights Reserved.
  *
  * Contributor(s): .
@@ -44,7 +44,7 @@ unit ParallelJobs;
  ***************************************************************************
  *
  * You may retrieve the latest version of this file at the DevPartners Forum,
- * located at http://devpartners.projects.pro.br/forum/?board=8
+ * located at http://code.google.com/p/paralleljobs/
  *
  ***************************************************************************}
 
@@ -125,7 +125,7 @@ type
     FFirstJob    : PJobItem;
     FLastJob     : PJobItem;
     FJobsCount   : integer;
-    FJobsHandles : array of THandle;
+    FJobsHandles : TWOHandleArray;
     FLock        : boolean;
     procedure AddJob(AJob: Pointer);
     procedure DelJob(AJob: Pointer; AInternalEnd: boolean = false);
@@ -874,13 +874,6 @@ procedure TJobsGroup.Clear;
 begin
   while FFirstJob <> nil do
     DelJob(FFirstJob^.Job);
-
-  Lock;
-  try
-    SetLength(FJobsHandles, 0);
-  finally
-    Unlock;
-  end;  
 end;
 
 { Note: UpdateHandles is needed for WaitForJobs method
@@ -893,12 +886,13 @@ begin
   Lock;
   try
     i := 0;
-    SetLength(FJobsHandles, FJobsCount);
     pWalk := FFirstJob;
     while pWalk <> nil do
     begin
       FJobsHandles[i] := PParallelCall(pWalk^.Job)^.Hnd;
       i := i + 1;
+      if i = MAXIMUM_WAIT_OBJECTS then
+        Break;
       pWalk := pWalk^.next;
     end;
   finally
@@ -1075,10 +1069,11 @@ begin
 end;
 
 { Note: Simplify the events capture from jobs thread
+    Limit = MAXIMUM_WAIT_OBJECTS: 64 threads
 }
 function TJobsGroup.WaitForJobs(AWaitAll: boolean; AMilliseconds: DWORD): DWORD;
 begin
-  Result := WaitForMultipleObjects(Length(FJobsHandles), @FJobsHandles,
+  Result := WaitForMultipleObjects(FJobsCount, @FJobsHandles,
     AWaitAll, AMilliseconds);
 end;
 
