@@ -141,9 +141,8 @@ begin
     StartTime := GetTickCount;
     Jobs.StartJobs;
 
-    while iFounder = 0 do
-      Sleep(0);
-    
+    Jobs.WaitForJobs(true, INFINITE);
+
     lblTimer.Caption := IntToStr(GetTickCount - StartTime) +
       ' : Thread ' + IntToStr(iFounder);
   finally

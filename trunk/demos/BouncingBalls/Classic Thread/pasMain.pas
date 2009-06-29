@@ -7,32 +7,45 @@ uses
   Dialogs, ExtCtrls, Contnrs, StdCtrls, Buttons;
 
 type
+  PCircleDrawParam = ^TCircleDrawParam;
+  TCircleDrawParam = record
+    Buffer: TBitmap;
+    Position: Integer;
+  end;
+
   TBall = class(TThread)
   private
-    FCanvas: TCanvas;
-    FX: integer;
-    FY: integer;
+    FCircle: PCircleDrawParam;
   public
-    constructor Create(ACanvas: TCanvas; AX, AY: integer);
+    constructor Create(ACircleDrawParam: PCircleDrawParam);
+    procedure Execute; override;
+  end;
+
+  TDrawFlusher = class(TThread)
+  public
+    constructor Create;
     procedure Execute; override;
   end;
 
   TfrmMain = class(TForm)
-    pnlDisplay: TPanel;
     pnlInfo: TPanel;
     lblInfo: TLabel;
     btnSwitchDMode: TSpeedButton;
     btnAddBall: TSpeedButton;
     btnClean: TSpeedButton;
+    btnAdd100: TButton;
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure btnAddBallClick(Sender: TObject);
     procedure btnSwitchDModeClick(Sender: TObject);
     procedure btnCleanClick(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure btnAdd100Click(Sender: TObject);
   private
     { Private declarations }
   public
-    DisplayCanvas: TCanvas;
+    CircleDrawBase: TCircleDrawParam;
+    DrawFlusher: TDrawFlusher;
     BallsList: TObjectList;
   end;
 
@@ -52,17 +65,16 @@ var
 
 { TBall }
 
-constructor TBall.Create(ACanvas: TCanvas; AX, AY: integer);
+constructor TBall.Create(ACircleDrawParam: PCircleDrawParam);
 begin
-  FCanvas := ACanvas;
-  FX := AX;
-  FY := AY;
-
+  FCircle := ACircleDrawParam;
   inherited Create(false);
 end;
 
 procedure TBall.Execute;
 var
+  X, Y: integer;
+  Canvas: TCanvas;
   Position: TPoint;
   Radius: Integer;
   Color: TColor;
@@ -75,60 +87,119 @@ begin
   Position.Y := Radius;
   Color := RGB(Random(255), Random(255), Random(255));
   repeat
-    Speed := Point((Random(10) - 5), (Random(10) - 5));
+    Speed := Point((Random(5) - 5), (Random(5) - 5));
   until (Speed.X <> 0) and (Speed.Y <> 0);
 
   EllipseRect := Rect(0, 0, Radius * 2, Radius * 2);
 
-  MaxWidth := (FCanvas.ClipRect.Right - FCanvas.ClipRect.Left) - (Radius * 2);
-  MaxHeight := (FCanvas.ClipRect.Bottom - FCanvas.ClipRect.Top) - (Radius * 2);
+  Canvas := FCircle^.Buffer.Canvas;
+
+  MaxWidth := FCircle^.Buffer.Width - (Radius * 2);
+  MaxHeight := FCircle^.Buffer.Height - (Radius * 2);
+
+  Y := HiWord(FCircle.Position);
+  if Y > MaxHeight then Y := MaxHeight;
+  X := LoWord(FCircle.Position);
+  if X > MaxWidth then Y := MaxWidth;
+
   while not Terminated do
     if not GlobalPause then
     begin
-      FCanvas.Lock;
+      FCircle^.Buffer.Canvas.Lock;
       try
-        FCanvas.Pen.Color := clBlack;      
-        FCanvas.Brush.Color := clBlack;
-        OffsetRect(EllipseRect, FX, FY);
-        FCanvas.Ellipse(EllipseRect);
-        OffsetRect(EllipseRect, -FX, -FY);
+        Canvas.Pen.Color := clBlack;
+        Canvas.Brush.Color := clBlack;
+        OffsetRect(EllipseRect, X, Y);
+        Canvas.Ellipse(EllipseRect);
+        OffsetRect(EllipseRect, -X, -Y);
 
-        FX := FX + Speed.X;
-        FY := FY + Speed.Y;
-        if (FX < 0) or (FX > MaxWidth) then
+        X := X + Speed.X;
+        Y := Y + Speed.Y;
+        if (X < 0) or (X > MaxWidth) then
           Speed.X := -Speed.X;
-        if (FY < 0) or (FY > MaxHeight) then
+        if (Y < 0) or (Y > MaxHeight) then
           Speed.Y := -Speed.Y;
 
-        FCanvas.Pen.Color := Color xor $FFFFFF;
-        FCanvas.Brush.Color := Color;
-        OffsetRect(EllipseRect, FX, FY);
-        FCanvas.Ellipse(EllipseRect);
-        OffsetRect(EllipseRect, -FX, -FY);
+        Canvas.Pen.Color := Color xor $FFFFFF;
+        Canvas.Brush.Color := Color;
+        OffsetRect(EllipseRect, X, Y);
+        Canvas.Ellipse(EllipseRect);
+        OffsetRect(EllipseRect, -X, -Y);
       finally
-        FCanvas.Unlock;
+        FCircle^.Buffer.Canvas.Unlock;
       end;
       Sleep(10);
     end else
       Sleep(1);
+
+  Dispose(FCircle);
+end;
+
+{ TDrawFlusher }
+
+constructor TDrawFlusher.Create;
+begin
+  inherited Create(false);
+end;
+
+procedure TDrawFlusher.Execute;
+begin
+  while not Terminated do
+    with frmMain do
+    begin
+      CircleDrawBase.Buffer.Canvas.Lock;
+      try
+        if Canvas.TryLock then
+        begin
+          Canvas.Draw(0, 0, CircleDrawBase.Buffer);
+          Canvas.Unlock;
+        end;
+      finally
+        CircleDrawBase.Buffer.Canvas.Unlock;
+      end;
+      Sleep(10);
+    end;
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  DisplayCanvas := TPanellAccess(pnlDisplay).Canvas;
+  ControlStyle := ControlStyle + [csOpaque];
+
+  with CircleDrawBase do
+  begin
+    Buffer := TBitmap.Create;
+    Buffer.Width := 320;
+    Buffer.Height := 220;
+    Buffer.Canvas.Brush.Color := clBlack;
+    Buffer.Canvas.FillRect(Buffer.Canvas.ClipRect);
+
+    Position := 0;
+  end;
+
+  lblInfo.Caption := 'Balls count: 0';
+
   BallsList := TObjectList.Create;
-  lblInfo.Caption := 'Balls count: 0';  
 end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
+  DrawFlusher.Free;
   BallsList.Free;
 end;
 
 procedure TfrmMain.btnAddBallClick(Sender: TObject);
+var
+  pParam: PCircleDrawParam;
 begin
   Randomize;
-  BallsList.Add(TBall.Create(DisplayCanvas, Random(100), Random(100)));
+
+  New(pParam);
+  pParam^ := CircleDrawBase;
+  pParam^.Position := MakeLong(
+    Random(CircleDrawBase.Buffer.Width),
+    Random(CircleDrawBase.Buffer.Height)
+  );
+  BallsList.Add(TBall.Create(pParam));
   lblInfo.Caption := Format('Balls count: %d', [BallsList.Count]);
 end;
 
@@ -142,11 +213,28 @@ procedure TfrmMain.btnCleanClick(Sender: TObject);
 begin
   try
     BallsList.Free;
-    pnlDisplay.Invalidate;
+    CircleDrawBase.Buffer.Canvas.Brush.Color := clBlack;
+    CircleDrawBase.Buffer.Canvas.FillRect(CircleDrawBase.Buffer.Canvas.ClipRect);
+    Invalidate;
   finally
     BallsList := TObjectList.Create;
     lblInfo.Caption := 'Balls count: 0';
   end;
+end;
+
+procedure TfrmMain.FormShow(Sender: TObject);
+begin
+  if Tag = 0 then
+    DrawFlusher := TDrawFlusher.Create;
+  Tag := 1;
+end;
+
+procedure TfrmMain.btnAdd100Click(Sender: TObject);
+var
+  i: integer;
+begin
+  for i := 1 to 100 do
+    btnAddBallClick(nil);
 end;
 
 end.

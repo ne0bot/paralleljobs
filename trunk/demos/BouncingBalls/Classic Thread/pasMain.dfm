@@ -3,7 +3,6 @@ object frmMain: TfrmMain
   Top = 288
   Width = 328
   Height = 277
-  AutoSize = True
   Caption = 'Bouncing Balls - Classic Thread'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -14,11 +13,12 @@ object frmMain: TfrmMain
   OldCreateOrder = False
   OnCreate = FormCreate
   OnDestroy = FormDestroy
+  OnShow = FormShow
   PixelsPerInch = 96
   TextHeight = 13
   object pnlInfo: TPanel
     Left = 0
-    Top = 0
+    Top = 220
     Width = 320
     Height = 30
     BevelInner = bvRaised
@@ -61,14 +61,14 @@ object frmMain: TfrmMain
       Caption = 'Clean'
       OnClick = btnCleanClick
     end
-  end
-  object pnlDisplay: TPanel
-    Left = 0
-    Top = 30
-    Width = 320
-    Height = 220
-    BevelOuter = bvNone
-    Color = clBlack
-    TabOrder = 1
+    object btnAdd100: TButton
+      Left = 164
+      Top = 8
+      Width = 49
+      Height = 16
+      Caption = 'Add 100'
+      TabOrder = 0
+      OnClick = btnAdd100Click
+    end
   end
 end
