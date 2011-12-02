@@ -10,6 +10,13 @@ begin
   ParallelJob(@MyProcess);
 end;
 }}}
+Using object call:
+{{{
+procedure TForm.RunJob;
+begin
+  ParallelJob(Self, @TForm.MyProcess);
+end;
+}}}
 This will create a parallel process that will execute MyProcess function.
 
 All controls and utilities are being implemented and still on development
