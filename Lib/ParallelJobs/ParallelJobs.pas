@@ -341,6 +341,7 @@ type
     SafeFlag    : PBoolean;
     Terminated  : TParallelCallTerminateState;
     EndCall     : Boolean;
+    Holder      : Pointer;
   end;
 
   { Note: Jobs holder, to provide a base for jobs controls
@@ -376,25 +377,30 @@ procedure CreateHolder(AParallelJob: PParallelCall);
 var
   pNew: PParallelJobHolder;
 begin
-  LockVar(HolderLock);
   try
     New(pNew);
     pNew^.Job := AParallelJob;
     pNew^.prev := nil;
     pNew^.next := nil;
+    AParallelJob^.Holder := pNew;
 
-    if FirstParallelJobHolder = nil then
-    begin
-      FirstParallelJobHolder := pNew;
-      LastParallelJobHolder := pNew;
-    end else
-    begin
-      LastParallelJobHolder^.next := pNew;
-      pNew^.prev := LastParallelJobHolder;
-      LastParallelJobHolder := pNew;
+    LockVar(HolderLock);
+    try
+      if FirstParallelJobHolder = nil then
+      begin
+        FirstParallelJobHolder := pNew;
+        LastParallelJobHolder := pNew;
+      end else
+      begin
+        LastParallelJobHolder^.next := pNew;
+        pNew^.prev := LastParallelJobHolder;
+        LastParallelJobHolder := pNew;
+      end;
+    finally
+      UnlockVar(HolderLock);
     end;
   finally
-    UnlockVar(HolderLock);
+    //
   end;
 end;
 
@@ -402,42 +408,40 @@ end;
 }
 procedure DestroyHolder(AParallelJob: PParallelCall);
 var
-  pWalk: PParallelJobHolder;
+  pWalk, pHolder: PParallelJobHolder;
 begin
-  LockVar(HolderLock);
-  try
-    pWalk := FirstParallelJobHolder;
-    while pWalk <> nil do
-      if pWalk^.Job = AParallelJob then
-      begin
-        UnlockVar(HolderLock);
-        try
-          TerminateParallelJob(pWalk^.Job);
-        finally
-          LockVar(HolderLock);
-        end;
+  pHolder := AParallelJob^.Holder;
 
-        if CurrentParallelJobHolder = pWalk then
-          CurrentParallelJobHolder := nil;
+  if pHolder <> nil then
+  begin
+    LockVar(HolderLock);
+    try
+      pWalk := pHolder;
 
-        if pWalk^.prev <> nil then
-          pWalk^.prev^.next := pWalk^.next;
+      if CurrentParallelJobHolder = pWalk then
+        CurrentParallelJobHolder := nil;
 
-        if pWalk^.next <> nil then
-          pWalk^.next^.prev := pWalk^.prev;
+      if pWalk^.prev <> nil then
+        pWalk^.prev^.next := pWalk^.next;
 
-        if pWalk = LastParallelJobHolder then
-          LastParallelJobHolder := pWalk^.prev;
+      if pWalk^.next <> nil then
+        pWalk^.next^.prev := pWalk^.prev;
 
-        if pWalk = FirstParallelJobHolder then
-          FirstParallelJobHolder := pWalk^.next;
+      if pWalk = LastParallelJobHolder then
+        LastParallelJobHolder := pWalk^.prev;
 
-        Dispose(pWalk);
-        pWalk := nil;
-      end else
-        pWalk := pWalk^.next;
-  finally
-    UnlockVar(HolderLock);
+      if pWalk = FirstParallelJobHolder then
+        FirstParallelJobHolder := pWalk^.next;
+    finally
+      UnlockVar(HolderLock);
+    end;
+
+    AParallelJob^.Holder := nil;    
+
+    TerminateParallelJob(pHolder^.Job);
+    VirtualFree(pHolder^.Job, 0, MEM_RELEASE);
+
+    Dispose(pHolder);
   end;
 end;
 
@@ -554,7 +558,12 @@ end;
 { Note: Forwarding EndParallelJob to ParallelWorker auto free
 }
 procedure EndParallelJob(AParallelJob: PParallelCall;
-  AEnd: boolean = false); forward;
+  AInternalEnd: boolean = false); forward;
+
+procedure InternalEndParallelJob(AParallelJob: PParallelCall);
+begin
+  EndParallelJob(AParallelJob, true);
+end;
 
 { Note: Central operation point of ParallelJobs system.
 }
@@ -595,7 +604,7 @@ asm
   lock add [ebx+$2A],$01
   mov eax,AParam
   push eax
-  call EndParallelJob
+  call InternalEndParallelJob
   pop eax
 end;
 
@@ -650,21 +659,25 @@ type
 
 { Note: Finalize the job structure and allocations
 }
+procedure ParallelReleaseParallelJob(AParallelCall : PParallelCall);
+begin
+  if AParallelCall^.Group <> nil then
+    AParallelCall^.Group.DelJob(AParallelCall, true);
+
+  TerminateNullJob := true;
+  if AParallelCall^.SafeSection then
+    case AParallelCall^.Mode of
+      pcmSelfMode : SafeSectionInfoFlagFree(AParallelCall^.Thunk.aV, AParallelCall^.Call);
+      pcmDirect   : SafeSectionInfoFlagFree(nil, AParallelCall^.Call);
+    end;
+  DestroyHolder(AParallelCall);
+end;
+
+{ Note: Threaded call to ParallelReleaseParallelJob
+}
 function ParallelEndParallelJob(AParam: PParallelEnd): Integer; stdcall;
 begin
-  with AParam^ do
-  begin
-    if ParallelCall^.Group <> nil then
-      ParallelCall^.Group.DelJob(ParallelCall, true);
-
-    TerminateNullJob := true;
-    if ParallelCall^.SafeSection then
-      case ParallelCall^.Mode of
-        pcmSelfMode : SafeSectionInfoFlagFree(ParallelCall^.Thunk.aV, ParallelCall^.Call);
-        pcmDirect   : SafeSectionInfoFlagFree(nil, ParallelCall^.Call);
-      end;
-    DestroyHolder(ParallelCall);
-  end;
+  ParallelReleaseParallelJob(AParam^.ParallelCall);
   SetEvent(AParam^.FreeEvent);
   Result := 0;
 end;
@@ -677,32 +690,38 @@ var
 
 { Note: Call finalize on a other thread
 }
-procedure EndParallelJob(AParallelJob: PParallelCall; AEnd: boolean = false);
+procedure EndParallelJob(AParallelJob: PParallelCall;
+  AInternalEnd: boolean = false);
 var
   PEnd: TParallelEnd;
   dwNull: DWORD;
 begin
-  if not AParallelJob^.EndCall then
-    LockVar(AParallelJob^.EndCall)
+  if AInternalEnd then
+    ParallelReleaseParallelJob(AParallelJob)
   else
-    Exit;
+  begin   
+    if not AParallelJob^.EndCall then
+      LockVar(AParallelJob^.EndCall)
+    else
+      Exit;
     
-  if AParallelJob^.Hnd = 0 then
-    Exit;
+    if AParallelJob^.Hnd = 0 then
+      Exit;
 
-  with PEnd do
-  begin
-    FreeEvent := CreateEvent(nil, true, False, nil);
-    ParallelCall := AParallelJob;
-    Hnd := CreateThread(nil, 0, @ParallelEndParallelJob,
-      @PEnd, CREATE_SUSPENDED, dwNull);
-    ResumeThread(Hnd);
+    with PEnd do
+    begin
+      FreeEvent := CreateEvent(nil, true, False, nil);
+      ParallelCall := AParallelJob;
+      Hnd := CreateThread(nil, 0, @ParallelEndParallelJob,
+        @PEnd, CREATE_SUSPENDED, dwNull);
+      ResumeThread(Hnd);
 
-    while WaitForSingleObject(FreeEvent, 0) <> WAIT_OBJECT_0 do
-      if Assigned(EndParallelJobWaitNotify) then
-        EndParallelJobWaitNotify;
+      while WaitForSingleObject(FreeEvent, 1) <> WAIT_OBJECT_0 do
+        if Assigned(EndParallelJobWaitNotify) then
+          EndParallelJobWaitNotify;
 
-    CloseHandle(FreeEvent);
+      CloseHandle(FreeEvent);
+    end;
   end;
 end;
 
