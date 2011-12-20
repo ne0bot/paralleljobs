@@ -13,16 +13,16 @@ const
   WM_PROCESSSBUFFERADDED = WM_USER + $F3;
 
 type
-  PSocketBuffer = ^TSocketBuffer;
-  TSocketBuffer = packed record
+  PBuffer = ^TBuffer;
+  TBuffer = packed record
     id: Cardinal;
-    n: PSocketBuffer;
+    n: PBuffer;
   end;
 
   TBufferReaderCall = class(TThread)
   private
-    FBuffer: PSocketBuffer;
-    constructor Create(ABuffer: PSocketBuffer);
+    FBuffer: PBuffer;
+    constructor Create(ABuffer: PBuffer);
   public
     procedure Execute; override;
   end;
@@ -63,11 +63,11 @@ var
   frmMain: TfrmMain;
 
 var
-  FirstSocketBuffer: PSocketBuffer = nil;
-  LastSocketBuffer: PSocketBuffer = nil;
+  FirstBuffer: PBuffer = nil;
+  LastBuffer: PBuffer = nil;
 
-  SocketBufferLock: TRTLCriticalSection;
-  SocketBufferEvent: THandle;
+  BufferLock: TRTLCriticalSection;
+  BufferEvent: THandle;
 
 implementation
 
@@ -75,7 +75,7 @@ implementation
 
 { TBufferReaderCall }
 
-constructor TBufferReaderCall.Create(ABuffer: PSocketBuffer);
+constructor TBufferReaderCall.Create(ABuffer: PBuffer);
 begin
   FBuffer := ABuffer;
   FreeOnTerminate := true;
@@ -98,13 +98,13 @@ end;
 
 procedure TBufferDispatch.Execute;
 var
-  BufferStep, BufferStepNext: PSocketBuffer;
+  BufferStep, BufferStepNext: PBuffer;
 begin
   while not Terminated do
   begin
-    EnterCriticalSection(SocketBufferLock);
+    EnterCriticalSection(BufferLock);
     try
-      BufferStep := FirstSocketBuffer;
+      BufferStep := FirstBuffer;
       while BufferStep <> nil do
       begin
         BufferStepNext := BufferStep^.n;
@@ -112,14 +112,14 @@ begin
         BufferStep := BufferStepNext;
       end;
 
-      FirstSocketBuffer := nil;
-      LastSocketBuffer := nil;
-      ResetEvent(SocketBufferEvent);
+      FirstBuffer := nil;
+      LastBuffer := nil;
+      ResetEvent(BufferEvent);
     finally
-      LeaveCriticalSection(SocketBufferLock);
+      LeaveCriticalSection(BufferLock);
     end;
 
-    WaitForSingleObject(SocketBufferEvent, INFINITE);
+    WaitForSingleObject(BufferEvent, INFINITE);
   end;
 end;
 
@@ -152,9 +152,9 @@ end;
 
 procedure TfrmMain.AddBuffer;
 var
-  NewBuffer: PSocketBuffer;
+  NewBuffer: PBuffer;
 begin
-  EnterCriticalSection(SocketBufferLock);
+  EnterCriticalSection(BufferLock);
   try
     try
       New(NewBuffer);
@@ -163,19 +163,19 @@ begin
       
       Inc(BufferCount);
 
-      if FirstSocketBuffer = nil then
-        FirstSocketBuffer := NewBuffer;
+      if FirstBuffer = nil then
+        FirstBuffer := NewBuffer;
 
-      if LastSocketBuffer <> nil then
-        LastSocketBuffer^.n := NewBuffer;
+      if LastBuffer <> nil then
+        LastBuffer^.n := NewBuffer;
 
-      LastSocketBuffer := NewBuffer;
+      LastBuffer := NewBuffer;
     except
       // Exception manager...
     end;
   finally
-    LeaveCriticalSection(SocketBufferLock);
-    SetEvent(SocketBufferEvent);      
+    LeaveCriticalSection(BufferLock);
+    SetEvent(BufferEvent);      
   end;
 end;
 
@@ -197,8 +197,8 @@ end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 begin
-  InitializeCriticalSection(SocketBufferLock);
-  SocketBufferEvent := CreateEvent(nil, true, false, nil);
+  InitializeCriticalSection(BufferLock);
+  BufferEvent := CreateEvent(nil, true, false, nil);
 
   BufferDispatch := TBufferDispatch.Create;
 end;
@@ -207,8 +207,8 @@ procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   BufferDispatch.Terminate;
 
-  SetEvent(SocketBufferEvent);
-  CloseHandle(SocketBufferEvent);  
+  SetEvent(BufferEvent);
+  CloseHandle(BufferEvent);  
 end;
 
 end.
