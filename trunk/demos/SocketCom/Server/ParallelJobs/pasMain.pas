@@ -74,7 +74,7 @@ var
 
 implementation
 
-uses ParallelJobs;
+uses ParallelJobs, WinSock;
 
 {$R *.dfm}
 
@@ -260,31 +260,37 @@ var
   sCmd, sParam, sTime: string;
 begin
   try
-    sCmd := Copy(ABuffer^.d, 1, 4);
-    sParam := Copy(ABuffer^.d, 5, Length(ABuffer^.d));
-    sTime := Copy(sParam, Pos('{', sParam) - 1, Length(sParam));
-    sParam := Copy(sParam, 1, Length(sParam) - Length(sTime));
+    try
+      sCmd := Copy(ABuffer^.d, 1, 4);
+      sParam := Copy(ABuffer^.d, 5, Length(ABuffer^.d));
+      sTime := Copy(sParam, Pos('{', sParam) - 1, Length(sParam));
+      sParam := Copy(sParam, 1, Length(sParam) - Length(sTime));
 
-    AsyncLog('['+ ABuffer^.s.RemoteAddress + ']: ' +
-      IntToStr(ABuffer^.id) + ' Cmd ' + sCmd + '(' + sParam + sTime + ') [' + DateTimeToStr(Now) + ']');
+      if ABuffer^.s.SocketHandle <> INVALID_SOCKET then
+      begin         
+        AsyncLog('['+ ABuffer^.s.RemoteAddress + ']: ' +
+          IntToStr(ABuffer^.id) + ' Cmd ' + sCmd + '(' + sParam + sTime + ') [' + DateTimeToStr(Now) + ']');
 
-    if sCmd = '' then
-    begin
-      // none
-    end else if sCmd = 'RAND' then
-    begin
-      // none
-    end else if sCmd = 'WAIT' then
-    begin
-
-      Sleep(StrToInt(sParam));
-      ABuffer^.s.SendText('WAIT R ' + sParam);
-    end else if sCmd = 'RQST' then
-    begin
-      ABuffer^.s.SendText('RQST R ' + DateTimeToStr(Now));
-    end else if sCmd = 'CCNT' then
-    begin                                                                             
-      ABuffer^.s.SendText('CCNT R ' + IntToStr(Server.Socket.Socket.ActiveConnections));
+        if sCmd = '' then
+        begin
+          // none
+        end else if sCmd = 'RAND' then
+        begin
+          // none
+        end else if sCmd = 'WAIT' then
+        begin         
+          Sleep(StrToInt(sParam));
+          ABuffer^.s.SendText('WAIT R ' + sParam);
+        end else if sCmd = 'RQST' then
+        begin
+          ABuffer^.s.SendText('RQST R ' + DateTimeToStr(Now));
+        end else if sCmd = 'CCNT' then
+        begin
+          ABuffer^.s.SendText('CCNT R ' + IntToStr(Server.Socket.Socket.ActiveConnections));
+        end;
+      end;
+    except
+      // client socket disconnection or sequential lock on send text
     end;
   finally
     ABuffer^.d := '';
