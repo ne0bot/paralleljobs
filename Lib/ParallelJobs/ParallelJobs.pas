@@ -3,9 +3,9 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2009.0.1.12
- *@author Gilberto Saraiva - http://gsaraiva.projects.pro.br/
- *@copyright Copyright © 2009, DevPartners, Gilberto Saraiva
+ *@version 2011.0.1.13
+ *@author Gilberto Saraiva - http://projects.pro.br/
+ *@copyright Copyright © 2011, DevPartners, Gilberto Saraiva
  *@homepage http://code.google.com/p/paralleljobs/
  *
  * License: MPL 1.1
@@ -26,7 +26,7 @@ unit ParallelJobs;
  * The Original Code is ParallelJobs.pas, released: 04 july 2008.
  *
  * The Initial Developer of the Original Code is Gilberto Saraiva.
- * Portions created by Gilberto Saraiva are Copyright (C) 2009 -
+ * Portions created by Gilberto Saraiva are Copyright (C) 2011 -
  * Gilberto Saraiva. All Rights Reserved.
  *
  * Contributor(s): .
@@ -142,8 +142,8 @@ type
     procedure InitJobCapture;
     procedure EndJobCapture;
 
-    procedure StartJobs;
-    procedure StopJobs(AWaitNotify: TWaitProcessNotify = nil; AForce: boolean = false);
+    function StartJobs: integer;
+    function StopJobs(AWaitNotify: TWaitProcessNotify = nil; AForce: boolean = false): integer;
 
     function JobsCount: integer;
     function JobsIsRunning: Integer;
@@ -177,6 +177,15 @@ type
     AParam: Pointer = nil; ASafeSection: boolean = false); overload;
 
 implementation
+
+
+{ Note: ReprocessLoop
+}
+procedure ReprocessLoop;
+begin
+  SwitchToThread;
+  Sleep(0);
+end;
 
 type
   { Note: Safe Section holder type
@@ -255,7 +264,10 @@ procedure LockVar(var AVar: Boolean);
 asm
   push ebx
   mov ebx, eax
+  jmp @@testInit
 @@test:
+  call SwitchToThread
+@@testInit:
   push $00
   call Sleep
   mov ecx, ebx
@@ -269,7 +281,7 @@ end;
 
 { Note: Unlock bool var
 }
-procedure UnlockVar(var AVar: boolean);
+procedure UnlockVar(var AVar: Boolean);
 asm
   mov byte ptr [eax], $00
 end;
@@ -414,6 +426,8 @@ begin
 
   if pHolder <> nil then
   begin
+    TerminateParallelJob(pHolder^.Job);
+
     LockVar(HolderLock);
     try
       pWalk := pHolder;
@@ -438,7 +452,6 @@ begin
 
     AParallelJob^.Holder := nil;    
 
-    TerminateParallelJob(pHolder^.Job);
     VirtualFree(pHolder^.Job, 0, MEM_RELEASE);
 
     Dispose(pHolder);
@@ -472,7 +485,7 @@ begin
 
         if TerminateNullJob then
           while AParallelJob^.Terminated = 1 do
-            Sleep(0);
+            SwitchToThread;
       end;
     end;
 
@@ -526,11 +539,11 @@ begin
     while FirstParallelJobHolder <> nil do
     begin
       AWaitNotify;
-      Sleep(0);
+      SwitchToThread;
     end
   else
     while FirstParallelJobHolder <> nil do
-      Sleep(0);
+      SwitchToThread;
 end;
 
 { Note: Return the Job holder by ID
@@ -570,7 +583,7 @@ end;
 function ParallelWorker(AParam: PParallelCall): Integer; stdcall;
 asm
   call GetCurrentThreadId
-  mov [ebx+$1C],eax
+  mov [ebx+$1C],eax  
   mov al,[ebx+$25]
   cmp al,0
   jz @Init
@@ -645,7 +658,7 @@ begin
   Result^.Terminated := 0;
   Result^.EndCall := false;
 
-  Result^.Hnd := CreateThread(nil, 0, @ParallelWorker,
+  Result^.Hnd := CreateRemoteThread(GetCurrentProcess, nil, 0, @ParallelWorker,
     Result, CREATE_SUSPENDED, dwNull);
 end;
 
@@ -893,6 +906,9 @@ procedure TJobsGroup.Clear;
 begin
   while FFirstJob <> nil do
     DelJob(FFirstJob^.Job);
+
+  FFirstJob := nil;
+  FLastJob := nil;    
 end;
 
 { Note: UpdateHandles is needed for WaitForJobs method
@@ -981,13 +997,7 @@ begin
         PParallelCall(pWalk^.Job)^.Group := nil;
         
         if not AInternalEnd then
-          EndParallelJob(PParallelCall(pWalk^.Job));
-
-        if pWalk = FLastJob then
-          FLastJob := pWalk^.prev;
-
-        if pWalk = FFirstJob then
-          FFirstJob := pWalk^.next;
+          TerminateParallelJob(PParallelCall(pWalk^.Job));
 
         if pWalk^.prev <> nil then
           pWalk^.prev^.next := pWalk^.next;
@@ -995,9 +1005,15 @@ begin
         if pWalk^.next <> nil then
           pWalk^.next^.prev := pWalk^.prev;
 
+        if pWalk = FLastJob then
+          FLastJob := pWalk^.prev;
+
+        if pWalk = FFirstJob then
+          FFirstJob := pWalk^.next;
+
         Dispose(pWalk);
         FJobsCount := FJobsCount - 1;
-        Sleep(0);
+        SwitchToThread;
         Break;
       end else
         pWalk := pWalk^.next;
@@ -1011,51 +1027,83 @@ end;
 }
 function TJobsGroup.GetJobItem(index: integer): PJobItem;
 begin
-  Result := FFirstJob;
-  while index > 0 do
-  begin
-    Result := Result^.next;
-    Dec(index);
+  Lock;
+  try
+    Result := FFirstJob;
+    while index > 0 do
+    begin
+      Result := Result^.next;
+      Dec(index);
+    end;
+  finally
+    Unlock;
   end;
 end;
 
 { Note: Start all jobs of the Group
 }
-procedure TJobsGroup.StartJobs;
+function TJobsGroup.StartJobs: integer;
 var
   pWalk: PJobItem;
+  i: integer;
+  arStart: array of PJobItem;
 begin
-  pWalk := FFirstJob;
-  while pWalk <> nil do
-  begin
-    if PParallelCall(pWalk^.Job)^.GState = jgsStopped then
-    begin
-      ResumeThread(PParallelCall(pWalk^.Job)^.Hnd);
-      PParallelCall(pWalk^.Job)^.GState := jgsRunning;
-    end;
+  Lock;
+  try
+    Result := 0;
+    SetLength(arStart, JobsCount);
 
-    pWalk := pWalk^.next;
+    pWalk := FFirstJob;
+    while pWalk <> nil do
+    begin
+      arStart[Result] := pWalk;
+      Inc(Result);
+
+      pWalk := pWalk^.next;
+    end;
+  finally
+    Unlock;
   end;
+
+  Result := 0;
+  for i := 0 to High(arStart) do
+    if PParallelCall(arStart[i]^.Job)^.GState = jgsStopped then
+    begin
+      PParallelCall(arStart[i]^.Job)^.GState := jgsRunning;
+      if ResumeThread(PParallelCall(arStart[i]^.Job)^.Hnd) <> DWORD(-1) then
+        Inc(Result);                                       
+    end;
+  
   UpdateHandles;
 end;
 
 { Note: Stop all jobs of the Group
 }
-procedure TJobsGroup.StopJobs(AWaitNotify: TWaitProcessNotify = nil; AForce: boolean = false);
+function TJobsGroup.StopJobs(AWaitNotify: TWaitProcessNotify = nil;
+  AForce: boolean = false): integer;
 var
   pWalk: PJobItem;
 begin
+  Result := 0;
   EndParallelJobWaitNotify := AWaitNotify;
-  pWalk := FFirstJob;
-  while pWalk <> nil do
-  begin
-    if PParallelCall(pWalk^.Job)^.GState = jgsRunning then
+
+  Lock;
+  try
+    pWalk := FFirstJob;
+    while pWalk <> nil do
     begin
-      SuspendThread(PParallelCall(pWalk^.Job)^.Hnd);
-      PParallelCall(pWalk^.Job)^.GState := jgsStopped;
+      if PParallelCall(pWalk^.Job)^.GState = jgsRunning then
+      begin
+        Inc(Result);
+        SuspendThread(PParallelCall(pWalk^.Job)^.Hnd);
+        PParallelCall(pWalk^.Job)^.GState := jgsStopped;
+      end;
+      pWalk := pWalk^.next;
     end;
-    pWalk := pWalk^.next;
+  finally
+    Unlock;
   end;
+  
   UpdateHandles;  
 end;
 
