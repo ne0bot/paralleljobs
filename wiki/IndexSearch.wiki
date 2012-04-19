@@ -5,6 +5,7 @@
 
 IndexSearch.
 
+[http://paralleljobs.googlecode.com/svn/trunk/utils/images/IndexSearching.png]
 
 = Details =
 
