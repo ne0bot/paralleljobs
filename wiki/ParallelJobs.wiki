@@ -143,6 +143,22 @@ end.
 = UseParallelJob = 
 http://code.google.com/p/paralleljobs/wiki/UseParallelJob
 
+
+= Demos =
+ * [http://code.google.com/p/paralleljobs/wiki/SocketCom]
+
+ * [http://code.google.com/p/paralleljobs/wiki/IndexSearch]
+
+ * [http://code.google.com/p/paralleljobs/wiki/ProcessOnTheFly]
+
+ * [http://code.google.com/p/paralleljobs/wiki/DOS]
+
+ * [http://code.google.com/p/paralleljobs/wiki/HeavyUse]
+
+ * [http://code.google.com/p/paralleljobs/wiki/BufferAsyncProcessing]
+
+
+
 = Details =
 *version 2012.0.1.13*
 
