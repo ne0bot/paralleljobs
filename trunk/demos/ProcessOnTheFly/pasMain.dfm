@@ -1,0 +1,139 @@
+object frmMain: TfrmMain
+  Left = 387
+  Top = 244
+  Width = 893
+  Height = 522
+  Caption = 'Process On The Fly ::  http://code.google.com/p/paralleljobs/'
+  Color = clSilver
+  Font.Charset = OEM_CHARSET
+  Font.Color = clBlack
+  Font.Height = -13
+  Font.Name = 'Terminal'
+  Font.Style = []
+  OldCreateOrder = False
+  Position = poScreenCenter
+  OnCreate = FormCreate
+  OnDestroy = FormDestroy
+  OnPaint = FormPaint
+  PixelsPerInch = 96
+  TextHeight = 12
+  object pnlBar: TPanel
+    Left = 0
+    Top = 0
+    Width = 877
+    Height = 33
+    Align = alTop
+    BevelOuter = bvNone
+    Color = clGray
+    Font.Charset = OEM_CHARSET
+    Font.Color = clWhite
+    Font.Height = -13
+    Font.Name = 'Terminal'
+    Font.Style = []
+    ParentFont = False
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 80
+      Top = 12
+      Width = 55
+      Height = 12
+      Caption = 'Processors:'
+    end
+    object Label2: TLabel
+      Left = 256
+      Top = 12
+      Width = 25
+      Height = 12
+      Caption = 'Jobs:'
+    end
+    object Label3: TLabel
+      Left = 392
+      Top = 12
+      Width = 30
+      Height = 12
+      Caption = 'Clock:'
+    end
+    object Label4: TLabel
+      Left = 504
+      Top = 12
+      Width = 15
+      Height = 12
+      Caption = 'Mhz'
+    end
+    object seProcessors: TSpinEdit
+      Left = 144
+      Top = 7
+      Width = 57
+      Height = 21
+      Font.Charset = OEM_CHARSET
+      Font.Color = clBlack
+      Font.Height = -13
+      Font.Name = 'Terminal'
+      Font.Style = []
+      MaxValue = 80
+      MinValue = 1
+      ParentFont = False
+      TabOrder = 3
+      Value = 4
+    end
+    object seJobs: TSpinEdit
+      Left = 288
+      Top = 6
+      Width = 65
+      Height = 21
+      Font.Charset = OEM_CHARSET
+      Font.Color = clBlack
+      Font.Height = -13
+      Font.Name = 'Terminal'
+      Font.Style = []
+      MaxValue = 999
+      MinValue = 2
+      ParentFont = False
+      TabOrder = 1
+      Value = 8
+    end
+    object btnSimulate: TButton
+      Left = 544
+      Top = 4
+      Width = 75
+      Height = 25
+      Caption = 'Simulate'
+      TabOrder = 0
+      OnClick = btnSimulateClick
+    end
+    object seClock: TSpinEdit
+      Left = 432
+      Top = 6
+      Width = 65
+      Height = 21
+      Font.Charset = OEM_CHARSET
+      Font.Color = clBlack
+      Font.Height = -13
+      Font.Name = 'Terminal'
+      Font.Style = []
+      MaxValue = 5000
+      MinValue = 1
+      ParentFont = False
+      TabOrder = 2
+      Value = 1500
+    end
+    object btnPause: TButton
+      Left = 632
+      Top = 7
+      Width = 49
+      Height = 18
+      Caption = 'Pause'
+      TabOrder = 4
+      OnClick = btnPauseClick
+    end
+    object btnPlay: TButton
+      Left = 688
+      Top = 7
+      Width = 49
+      Height = 18
+      Caption = 'Play'
+      TabOrder = 5
+      OnClick = btnPlayClick
+    end
+  end
+end

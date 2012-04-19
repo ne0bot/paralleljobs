@@ -168,8 +168,8 @@ begin
   with CircleDrawBase do
   begin
     Buffer := TBitmap.Create;
-    Buffer.Width := 320;
-    Buffer.Height := 220;
+    Buffer.Width := frmMain.ClientWidth;
+    Buffer.Height := frmMain.ClientHeight - pnlInfo.Height;
     Buffer.Canvas.Brush.Color := clBlack;
     Buffer.Canvas.FillRect(Buffer.Canvas.ClipRect);
 

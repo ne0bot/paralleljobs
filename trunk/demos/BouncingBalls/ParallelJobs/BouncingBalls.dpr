@@ -9,6 +9,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'Bouncing Balls';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.

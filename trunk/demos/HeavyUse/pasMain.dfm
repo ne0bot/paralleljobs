@@ -2,9 +2,9 @@ object frmMain: TfrmMain
   Left = 405
   Top = 334
   BorderStyle = bsDialog
-  Caption = 'Heavy Use'
+  Caption = 'Heavy Use :: http://code.google.com/p/paralleljobs/'
   ClientHeight = 139
-  ClientWidth = 317
+  ClientWidth = 376
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -17,28 +17,28 @@ object frmMain: TfrmMain
   PixelsPerInch = 96
   TextHeight = 13
   object lblProcess: TLabel
-    Left = 32
+    Left = 58
     Top = 88
     Width = 9
     Height = 13
     Caption = '...'
   end
   object Label1: TLabel
-    Left = 32
+    Left = 58
     Top = 24
     Width = 176
     Height = 13
     Caption = 'Use count: (Threads - safe limit 1800)'
   end
   object lblCalls: TLabel
-    Left = 32
+    Left = 58
     Top = 72
     Width = 9
     Height = 13
     Caption = '...'
   end
   object edtTestCount: TEdit
-    Left = 32
+    Left = 58
     Top = 40
     Width = 177
     Height = 21
@@ -46,7 +46,7 @@ object frmMain: TfrmMain
     Text = '1024'
   end
   object btnTest: TButton
-    Left = 216
+    Left = 242
     Top = 32
     Width = 75
     Height = 25

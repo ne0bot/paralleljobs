@@ -3,7 +3,9 @@ object frmMain: TfrmMain
   Top = 219
   Width = 680
   Height = 592
-  Caption = 'Server Socket Communication'
+  Caption = 
+    'Server Socket Communication :: http://code.google.com/p/parallel' +
+    'jobs/'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText

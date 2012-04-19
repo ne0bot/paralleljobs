@@ -3,7 +3,9 @@ object frmMain: TfrmMain
   Top = 219
   Width = 590
   Height = 340
-  Caption = 'Buffer Async Processing'
+  Caption = 
+    'Buffer Async Processing :: http://code.google.com/p/paralleljobs' +
+    '/'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -11,6 +13,7 @@ object frmMain: TfrmMain
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
+  Position = poScreenCenter
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   DesignSize = (
