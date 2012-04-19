@@ -1,9 +1,13 @@
 unit ParallelJobs;
 
+{$IFDEF FPC}
+  {$mode delphi}{$H+}
+{$ENDIF}
+
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2012.0.1.13
+ *@version 2012.0.1.14
  *@author Gilberto Saraiva - http://projects.pro.br/
  *@copyright Copyright © 2012, Gilberto Saraiva
  *@homepage http://code.google.com/p/paralleljobs/
@@ -168,7 +172,7 @@ type
 
   { Note: Basic use of ParallelJobs structure with JobGroup
     * Direct operation with JobGroup
-      @AJobGroup = JobGroup reference    
+      @AJobGroup = JobGroup reference
       @ATarget = The target to be called when job run
       @AParam = The pointer that will be pass as param to target
       @ASafeSection = Auto safe section control managed by ParallelJobs.
@@ -178,6 +182,9 @@ type
 
 implementation
 
+{$IFDEF FPC}
+  function SwitchToThread: BOOL; stdcall; external kernel32 name 'SwitchToThread';
+{$ENDIF}
 
 { Note: ReprocessLoop
 }
@@ -215,10 +222,10 @@ begin
       begin
         if RefsCount = 0 then
           SafeFlag := false;
-        RefsCount := RefsCount + 1;  
+        RefsCount := RefsCount + 1;
         Result := @SafeFlag;
       end;
-        
+
   if Result = nil then
   begin
     SetLength(SafeSectionInfo, Length(SafeSectionInfo) + 1);
@@ -372,7 +379,7 @@ var
         for control the chained list
       Current:
         for improve speed on the job and reduce
-        the search process cost. 
+        the search process cost.
   }
   HolderLock: boolean = false;
   TerminateNullJob: boolean = false;
@@ -450,7 +457,7 @@ begin
       UnlockVar(HolderLock);
     end;
 
-    AParallelJob^.Holder := nil;    
+    AParallelJob^.Holder := nil;
 
     VirtualFree(pHolder^.Job, 0, MEM_RELEASE);
 
@@ -461,7 +468,7 @@ end;
 { Note: Terminate thread
     Forced: Suspend the thread, imediatly stop. Can leak memory
     Normal: Pass the terminate flag to on and CurrentJobTerminated will
-      return true. 
+      return true.
 }
 procedure TerminateParallelJob(AParallelJob: PParallelCall;
   AForce: boolean = false);
@@ -583,7 +590,7 @@ end;
 function ParallelWorker(AParam: PParallelCall): Integer; stdcall;
 asm
   call GetCurrentThreadId
-  mov [ebx+$1C],eax  
+  mov [ebx+$1C],eax
   mov al,[ebx+$25]
   cmp al,0
   jz @Init
@@ -712,12 +719,12 @@ begin
   if AInternalEnd then
     ParallelReleaseParallelJob(AParallelJob)
   else
-  begin   
+  begin
     if not AParallelJob^.EndCall then
       LockVar(AParallelJob^.EndCall)
     else
       Exit;
-    
+
     if AParallelJob^.Hnd = 0 then
       Exit;
 
@@ -768,7 +775,7 @@ begin
     ResumeThread(pJob^.Hnd);
 end;
 
-{ Note: Return the Current Job ID 
+{ Note: Return the Current Job ID
 }
 function CurrentJobId: DWORD;
 begin
@@ -882,7 +889,7 @@ end;
 destructor TJobsGroup.Destroy;
 begin
   Clear;
-  DestroyJobsGroupHolder(Name);  
+  DestroyJobsGroupHolder(Name);
   inherited;
 end;
 
@@ -908,7 +915,7 @@ begin
     DelJob(FFirstJob^.Job);
 
   FFirstJob := nil;
-  FLastJob := nil;    
+  FLastJob := nil;
 end;
 
 { Note: UpdateHandles is needed for WaitForJobs method
@@ -932,7 +939,7 @@ begin
     end;
   finally
     Unlock;
-  end; 
+  end;
 end;
 
 { Note: Initialize the Jobs capture.
@@ -995,7 +1002,7 @@ begin
       if pWalk^.Job = AJob then
       begin
         PParallelCall(pWalk^.Job)^.Group := nil;
-        
+
         if not AInternalEnd then
           TerminateParallelJob(PParallelCall(pWalk^.Job));
 
@@ -1020,7 +1027,7 @@ begin
   finally
     Unlock;
   end;
-  UpdateHandles;   
+  UpdateHandles;
 end;
 
 { Note: Get job from Group
@@ -1071,9 +1078,9 @@ begin
     begin
       PParallelCall(arStart[i]^.Job)^.GState := jgsRunning;
       if ResumeThread(PParallelCall(arStart[i]^.Job)^.Hnd) <> DWORD(-1) then
-        Inc(Result);                                       
+        Inc(Result);
     end;
-  
+
   UpdateHandles;
 end;
 
@@ -1103,8 +1110,8 @@ begin
   finally
     Unlock;
   end;
-  
-  UpdateHandles;  
+
+  UpdateHandles;
 end;
 
 { Note: Return the count of all jobs of the Group
