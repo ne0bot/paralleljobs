@@ -3,7 +3,7 @@ object frmMain: TfrmMain
   Top = 219
   Width = 590
   Height = 241
-  Caption = 'Index Searching'
+  Caption = 'Index Searching :: http://code.google.com/p/paralleljobs/'
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -11,6 +11,7 @@ object frmMain: TfrmMain
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
+  Position = poScreenCenter
   PixelsPerInch = 96
   TextHeight = 13
   object lblSize: TLabel
@@ -77,7 +78,7 @@ object frmMain: TfrmMain
     Width = 75
     Height = 21
     Caption = 'Search'
-    TabOrder = 1
+    TabOrder = 4
     OnClick = btnSearchClick
   end
   object edtSearchItem: TEdit
@@ -95,7 +96,7 @@ object frmMain: TfrmMain
     Height = 21
     Min = 1
     Position = 1
-    TabOrder = 3
+    TabOrder = 1
     ThumbLength = 10
     OnChange = tckThreadsChange
   end
@@ -111,7 +112,7 @@ object frmMain: TfrmMain
     Font.Name = 'Wingdings 3'
     Font.Style = [fsBold]
     ParentFont = False
-    TabOrder = 4
+    TabOrder = 3
     OnClick = btnRandClick
   end
 end

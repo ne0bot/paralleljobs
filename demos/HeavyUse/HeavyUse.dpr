@@ -9,6 +9,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'Heavy Use';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.

@@ -9,6 +9,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'Buffer Async Processing';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.

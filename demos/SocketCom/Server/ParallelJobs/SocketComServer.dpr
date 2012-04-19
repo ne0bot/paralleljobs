@@ -9,6 +9,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'Server Socket Communication';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.

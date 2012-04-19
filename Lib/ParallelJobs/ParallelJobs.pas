@@ -3,9 +3,9 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2011.0.1.13
+ *@version 2012.0.1.13
  *@author Gilberto Saraiva - http://projects.pro.br/
- *@copyright Copyright © 2011, DevPartners, Gilberto Saraiva
+ *@copyright Copyright © 2012, Gilberto Saraiva
  *@homepage http://code.google.com/p/paralleljobs/
  *
  * License: MPL 1.1

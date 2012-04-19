@@ -8,6 +8,7 @@ uses
 
 begin
   Application.Initialize;
+  Application.Title := 'Index Searching';
   Application.CreateForm(TfrmMain, frmMain);
   Application.Run;
 end.
