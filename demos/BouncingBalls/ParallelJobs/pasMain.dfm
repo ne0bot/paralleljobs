@@ -3,8 +3,8 @@ object frmMain: TfrmMain
   Top = 231
   BorderStyle = bsDialog
   Caption = 
-    'Bouncing Ball - ParallelJobs :: http://code.google.com/p/paralle' +
-    'ljobs/'
+    'Bouncing Balls - ParallelJobs :: http://code.google.com/p/parall' +
+    'eljobs/'
   ClientHeight = 246
   ClientWidth = 566
   Color = clBtnFace
