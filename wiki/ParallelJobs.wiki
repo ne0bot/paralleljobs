@@ -156,13 +156,3 @@ http://code.google.com/p/paralleljobs/wiki/UseParallelJob
  * [http://code.google.com/p/paralleljobs/wiki/HeavyUse]
 
  * [http://code.google.com/p/paralleljobs/wiki/BufferAsyncProcessing]
-
-
-
-= Details =
-*version 2012.0.1.13*
-
-= Suggestions =
-
-Brazilian Multi-task Learning Tool:
- http://code.google.com/p/peebles/
