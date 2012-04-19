@@ -139,6 +139,9 @@ begin
 end.
 }}}
 
+= UseParallelJob = 
+http://code.google.com/p/paralleljobs/wiki/UseParallelJob
+
 = Details =
 *version 2012.0.1.13*
 
