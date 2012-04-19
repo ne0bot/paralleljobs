@@ -5,6 +5,7 @@
 
 ProcessOnTheFly.
 
+[http://paralleljobs.googlecode.com/svn/trunk/utils/images/ProcessOnTheFly.png]
 
 = Details =
 
