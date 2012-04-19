@@ -5,6 +5,7 @@
 
 SocketCom.
 
+[http://paralleljobs.googlecode.com/svn/trunk/utils/images/ServerClientComm.png]
 
 = Details =
 
