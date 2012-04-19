@@ -2,7 +2,7 @@
 
 = Introduction =
 
-With the Unit ParallelJobs.pas linked in your project you can start create a simple-to-advanced structure to do a parallel process.
+With the Unit ParallelJobs.pas linked in your project, you can start create a simple-to-advanced structure to do a parallel process.
 
 As we know, a parallel process requests a basic knowledge synchronism, execution and semaphores. So, before start with PJ, it's higly recommended that you need this knowledges.
 
