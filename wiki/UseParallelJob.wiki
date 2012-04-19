@@ -1,4 +1,4 @@
-#Start using ParallelJob on your application.
+#Start using ParallelJobs on your application.
 
 = Introduction =
 
