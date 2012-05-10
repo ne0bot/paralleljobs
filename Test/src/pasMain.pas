@@ -48,16 +48,18 @@ var
 
 procedure CentralLoop(AMemo: PMemo; AID: string);
 var
+  curr: TParallelJobInfo;
   iId: integer;
   cTime, cSleep, cTimeout: Cardinal;
 begin
+  curr := ObtainParallelJobInfo;
   Randomize;
   iId := StrToInt(AID);
   cSleep := Random(1000) + 1;
   cTimeout := Random(5000) + 10;
   cTime := GetTickCount + cTimeout;
   AMemo^.Lines.Add('#' + AID + ' START');
-  while (cTime > GetTickCount) and not CurrentJobTerminated do
+  while (cTime > GetTickCount) and not curr.Terminated do
   begin
     { Note: Memo add line is performed by SendMessage
     }
@@ -105,7 +107,7 @@ var
 begin
   s := Caption;
   cTime := GetTickCount + 5000;
-  while (cTime > GetTickCount) and not CurrentJobTerminated do
+  while (cTime > GetTickCount) and not CurrentParallelJobInfo.Terminated do
   begin
     s2 := s + ' #1: ' + TimeToStr(Now);
     { Note: Only PostMessage will create the corret display we want.
@@ -185,15 +187,15 @@ end;
 
 procedure TfrmMain.btn1Click(Sender: TObject);
 begin
-  TerminateAllParallelJobs;
+  TParallelJob.TerminateAllParallelJobs;
 end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-  TerminateAllParallelJobs;
+  TParallelJob.TerminateAllParallelJobs;
   { Note: To avoid Memo add line vcl deadlock with SendMessage.
   }
-  WaitAllParallelJobsFinalization(Application.ProcessMessages);
+  TParallelJob.WaitAllParallelJobsFinalization(Application.ProcessMessages);
 end;
 
 procedure TfrmMain.pnlTAreaResize(Sender: TObject);

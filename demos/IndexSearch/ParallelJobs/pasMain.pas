@@ -65,8 +65,7 @@ end;
 
 procedure TfrmMain.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
-
-  TerminateAllParallelJobs;
+  TParallelJob.TerminateAllParallelJobs;
 end;
 
 procedure TfrmMain.tckThreadsChange(Sender: TObject);

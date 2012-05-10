@@ -13,8 +13,8 @@ object frmMain: TfrmMain
   OldCreateOrder = False
   OnClose = FormClose
   DesignSize = (
-    668
-    351)
+    660
+    340)
   PixelsPerInch = 96
   TextHeight = 13
   object pnlTArea: TPanel
@@ -24,7 +24,7 @@ object frmMain: TfrmMain
     Height = 257
     Anchors = [akLeft, akTop, akRight, akBottom]
     BevelOuter = bvNone
-    TabOrder = 6
+    TabOrder = 3
     OnResize = pnlTAreaResize
     DesignSize = (
       481
@@ -72,7 +72,7 @@ object frmMain: TfrmMain
     Width = 165
     Height = 25
     Caption = 'Parallel Job Test #1'
-    TabOrder = 0
+    TabOrder = 1
     OnClick = btnJob1Click
   end
   object mmoDisplay: TMemo
@@ -82,7 +82,7 @@ object frmMain: TfrmMain
     Height = 73
     Anchors = [akLeft, akTop, akRight]
     ScrollBars = ssVertical
-    TabOrder = 1
+    TabOrder = 0
   end
   object btnJob2: TButton
     Left = 8
@@ -99,7 +99,7 @@ object frmMain: TfrmMain
     Width = 165
     Height = 25
     Caption = 'Parallel Job Test #3 [Groups]'
-    TabOrder = 3
+    TabOrder = 4
     OnClick = btnGroupJobsClick
   end
   object btnStopTest3: TButton
@@ -108,7 +108,7 @@ object frmMain: TfrmMain
     Width = 121
     Height = 25
     Caption = 'Stop Test #3 [Groups]'
-    TabOrder = 4
+    TabOrder = 5
     OnClick = btnStopTest3Click
   end
   object btn1: TButton
@@ -117,7 +117,7 @@ object frmMain: TfrmMain
     Width = 75
     Height = 25
     Caption = 'End All Jobs'
-    TabOrder = 5
+    TabOrder = 6
     OnClick = btn1Click
   end
 end

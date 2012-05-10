@@ -81,7 +81,7 @@ begin
   X := LoWord(ACircle.Position);
   if X > MaxWidth then Y := MaxWidth;
 
-  while not CurrentJobTerminated do
+  while not CurrentParallelJobInfo.Terminated do
     if not GlobalPause then
     begin
       ACircle^.Buffer.Canvas.Lock;
@@ -116,20 +116,21 @@ end;
 
 procedure TfrmMain.DrawFlusher;
 begin
-  while not CurrentJobTerminated do
-  begin
-    CircleDrawBase.Buffer.Canvas.Lock;
-    try
-      if Canvas.TryLock then
-      begin
-        Canvas.Draw(0, 0, CircleDrawBase.Buffer);
-        Canvas.Unlock;
+  with ObtainParallelJobInfo do
+    while not Terminated do
+    begin
+      CircleDrawBase.Buffer.Canvas.Lock;
+      try
+        if Canvas.TryLock then
+        begin
+          Canvas.Draw(0, 0, CircleDrawBase.Buffer);
+          Canvas.Unlock;
+        end;
+      finally
+        CircleDrawBase.Buffer.Canvas.Unlock;
       end;
-    finally
-      CircleDrawBase.Buffer.Canvas.Unlock;
+      Sleep(10);
     end;
-    Sleep(10);
-  end;
 end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
@@ -154,7 +155,7 @@ end;
 procedure TfrmMain.FormDestroy(Sender: TObject);
 begin
   Jobs.Free;
-  TerminateAllParallelJobs;
+  TParallelJob.TerminateAllParallelJobs;
 end;
 
 procedure TfrmMain.btnAddBallClick(Sender: TObject);

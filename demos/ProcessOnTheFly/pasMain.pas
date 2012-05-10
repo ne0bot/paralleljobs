@@ -62,6 +62,9 @@ type
 var
   frmMain: TfrmMain;
 
+const
+  WAIT_PROCESSOR = INFINITE;
+
 implementation
 
 {$R *.dfm}
@@ -91,39 +94,40 @@ end;
 
 procedure TProcessJob.ProcessJob(AParam: Pointer);
 begin
-  while not (CurrentJobTerminated or FTerminated) do
-  begin
-    case State of
-      pjsQueue: begin
-        Inc(FPosition);
-      end;
-      pjsWaitingLock: begin
-        while not (CurrentJobTerminated or FTerminated) do
-          if CanProcess then
-            Break;
+  with CurrentParallelJobInfo do
+    while not (Terminated or FTerminated) do
+    begin
+      case State of
+        pjsQueue: begin
+          Inc(FPosition);
+        end;
+        pjsWaitingLock: begin
+          while not (Terminated or FTerminated) do
+            if CanProcess then
+              Break;
 
-        Inc(FPosition);
-      end;
-      pjsProcessing: begin
-        Inc(FPosition);
-        if FPosition > 60 + FProcessUseTime then
-        begin
-          FPosition := 0;
-          SetEvent(FLocks[FLockIndex]);
+          Inc(FPosition);
+        end;
+        pjsProcessing: begin
+          Inc(FPosition);
+          if FPosition > 60 + FProcessUseTime then
+          begin
+            FPosition := 0;
+            SetEvent(FLocks[FLockIndex]);
+          end;
         end;
       end;
-    end;
 
-    Sleep(FClockDelta);
-  end;
+      Sleep(FClockDelta);
+    end;
 end;
 
 function TProcessJob.CanProcess: Boolean;
 var
   Index: integer;
 begin
-  Index := WaitForMultipleObjects(Length(FLocks), @FLocks[0], False, INFINITE);
-  Result := Index <> WAIT_TIMEOUT;
+  Index := WaitForMultipleObjects(Length(FLocks), @FLocks[0], False, WAIT_PROCESSOR);
+  Result := (Index >= WAIT_OBJECT_0) and (Index <= (WAIT_OBJECT_0 + Length(FLocks)));
   if Result then
     FLockIndex := Index - WAIT_OBJECT_0;
 end;
@@ -304,14 +308,20 @@ end;
 
 procedure TfrmMain.FormDestroy(Sender: TObject);
 var
-  i, x: integer;
+  i: integer;
 begin
   for i := 0 to High(ProcessJobsLock) do
-    for x := 0 to High(ProcessJobsLock) do
-      SetEvent(ProcessJobsLock[x]);
+  begin
+    SetEvent(ProcessJobsLock[i]);
+    CloseHandle(ProcessJobsLock[i]);
+    ProcessJobsLock[i] := INVALID_HANDLE_VALUE;
+  end;
+  
+  for i := 0 to High(ProcessJobs) do
+    ProcessJobs[i].Free;
 
-  TerminateAllParallelJobs(true);
-  WaitAllParallelJobsFinalization;
+  TParallelJob.TerminateAllParallelJobs;
+  TParallelJob.WaitAllParallelJobsFinalization;
 end;
 
 procedure TfrmMain.Invalidate;
