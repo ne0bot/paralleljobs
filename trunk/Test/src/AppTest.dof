@@ -90,7 +90,7 @@ MaxStackSize=1048576
 ImageBase=4194304
 ExeDescription=
 [Directories]
-OutputDir=..\exec\
+OutputDir=..\bin\
 UnitOutputDir=..\dcus\
 PackageDLLOutputDir=
 PackageDCPOutputDir=
@@ -135,8 +135,17 @@ ProductName=
 ProductVersion=1.0.0.0
 Comments=
 [Excluded Packages]
-C:\Arquivos de programas\Borland\Delphi7\Projects\Bpl\JvMMD7D.bpl=JVCL Multimedia and Image Components
-c:\arquivos de programas\borland\delphi7\Projects\Bpl\VirtualTreesD7D.bpl=Virtual Treeview design time package
+C:\Windows\system32\QR4RunD7.bpl=QuickReport Runtime Package
+C:\Program Files\Borland\Delphi7\Lib2\ied7\Delphi7\DPKIECTRL7.bpl=ImageEn Controls
+C:\Program Files\madCollection\madBasic\Delphi 7\madBasic_.bpl=madBasic 1.1n  -  www.madshi.net
+C:\Program Files\madCollection\madBasic\Delphi 7\madHelp_.bpl=madHelp 1.1a  -  www.madshi.net
+C:\Program Files\madCollection\madDisAsm\Delphi 7\madDisAsm_.bpl=madDisAsm 2.1d  -  www.madshi.net
+C:\Program Files\madCollection\madExcept\Delphi 7\madExceptIde_.bpl=madExceptIde 1.1  -  www.madshi.net
+C:\Program Files\madCollection\madExcept\Delphi 7\madExcept_.bpl=madExcept 3.0h  -  www.madshi.net
+C:\Program Files\madCollection\madExcept\Delphi 7\madExceptVcl_.bpl=madExceptVcl 2.0c  -  www.madshi.net
+C:\Program Files\madCollection\madExcept\Delphi 7\madExceptWizard_.bpl=madExceptWizard 3.0e  -  www.madshi.net
+c:\program files\borland\delphi7\Projects\Bpl\gbCob7.bpl=Delphi Boleto - Componentes para boleto bancário
+C:\Program Files\Borland\Delphi7\Bin\dclaxserver70.bpl=Microsoft Office 97 Sample Automation Server Wrapper Components
 [HistoryLists\hlUnitAliases]
 Count=1
 Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
@@ -144,5 +153,6 @@ Item0=WinTypes=Windows;WinProcs=Windows;DbiTypes=BDE;DbiProcs=BDE;DbiErrs=BDE;
 Count=1
 Item0=..\dcus\
 [HistoryLists\hlOutputDirectorry]
-Count=1
-Item0=..\exec\
+Count=2
+Item0=..\bin\
+Item1=..\exec\
