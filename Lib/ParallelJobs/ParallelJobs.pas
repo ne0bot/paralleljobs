@@ -734,11 +734,6 @@ var
   }
   TerminateNullJob: boolean = false;
   ParallelJobHolder: TParallelJobHolderList;
-  {
-  FirstParallelJobHolder   : PParallelJobHolder = nil;
-  LastParallelJobHolder    : PParallelJobHolder = nil;
-  CurrentParallelJobHolder : PParallelJobHolder = nil;
-  }
 
   procedure TerminateParallelJob(AParallelJob: PParallelCall;
     AForce: boolean = false); forward;
@@ -750,36 +745,12 @@ var
   pNew: PParallelJobHolder;
 begin
   try
-    {
-    New(pNew);
-    pNew^.Job := AParallelJob;
-    pNew^.prev := nil;
-    pNew^.next := nil;
-
-    }
     ParallelJobHolder.Locker.Lock;
     try
       AParallelJob^.Holder := ParallelJobHolder.AddJob(AParallelJob).GetCurrentItem;
     finally
       ParallelJobHolder.Locker.Unlock;
     end;
-    {
-    LockVar(HolderLock);
-    try
-      if FirstParallelJobHolder = nil then
-      begin
-        FirstParallelJobHolder := pNew;
-        LastParallelJobHolder := pNew;
-      end else
-      begin
-        LastParallelJobHolder^.next := pNew;
-        pNew^.prev := LastParallelJobHolder;
-        LastParallelJobHolder := pNew;
-      end;
-    finally
-      UnlockVar(HolderLock);
-    end;
-    }
   finally
     //
   end;
@@ -871,22 +842,6 @@ begin
   finally
     ParallelJobHolder.Locker.Unlock;
   end;
-
-
-  {      
-  LockVar(HolderLock);
-  try
-    Result := FirstParallelJobHolder;
-    while Result <> nil do
-      if Result^.Job^.ID = AID then
-        Break
-      else
-        Result := Result^.next;
-    CurrentParallelJobHolder := Result;
-  finally
-    UnlockVar(HolderLock);
-  end;
-  }
 end;
 
 { Note: Forwarding EndParallelJob to ParallelWorker auto free
@@ -1087,21 +1042,6 @@ begin
     end;
     GroupNameHolder.Next;
   end;
-
-//  GroupNameHolder.Add.Current^ := StrNew(PChar(AJobsGroupName));
-{
-  New(pNew);
-
-  if FirstJobsGroupHolder = nil then
-  begin
-    FirstJobsGroupHolder := pNew;
-    LastJobsGroupHolder := pNew;
-  end else
-  begin
-    LastJobsGroupHolder^.next := pNew;
-    pNew^.prev := LastJobsGroupHolder;
-    LastJobsGroupHolder := pNew;
-  end;  }
 end;
 
 procedure DestroyJobsGroupHolder(AJobsGroupName: string);
@@ -1479,20 +1419,17 @@ end;
 
 constructor TParallelJobLocker.Create;
 begin
-//  InitializeCriticalSection(FCS);
   Unlock;
 end;
 
 procedure TParallelJobLocker.Lock;
 begin
-//  EnterCriticalSection(FCS);
   LockVar(FLock);
 end;
 
 procedure TParallelJobLocker.Unlock;
 begin
   UnlockVar(FLock);
-//  LeaveCriticalSection(FCS);
 end;
 
 { TParallelJob }
@@ -1605,8 +1542,10 @@ begin
   if not FEnded then
   begin
     if AWaitFinish then
-      WaitForEnd
-    else
+    begin
+      InterlockedIncrement(PParallelCall(FHolder)^.Terminated);
+      WaitForEnd;
+    end else
     begin
       TerminateParallelJob(PParallelCall(FHolder), true);
       EndParallelJob(PParallelCall(FHolder), true);
@@ -1649,21 +1588,7 @@ class function TParallelJob.ParallelJobsCount: integer;
 var
   pWalk: PParallelJobHolder;
 begin
-  Result := ParallelJobHolder.Count;;
-
-  {
-  LockVar(HolderLock);
-  try
-    pWalk := FirstParallelJobHolder;
-    while pWalk <> nil do
-    begin
-      Result := Result + 1;
-      pWalk := pWalk^.next;
-    end;
-  finally
-    UnlockVar(HolderLock);
-  end;
-  }
+  Result := ParallelJobHolder.Count;
 end;
 
 { Note: Terminate all jobs
@@ -1690,19 +1615,6 @@ begin
   finally
     ParallelJobHolder.Locker.Unlock;
   end;
-  {
-  LockVar(HolderLock);
-  try
-    pWalk := FirstParallelJobHolder;
-    while pWalk <> nil do
-    begin
-      TerminateParallelJob(pWalk^.Job);
-      pWalk := pWalk^.next;
-    end;
-  finally
-    UnlockVar(HolderLock);
-  end;
-  }
 end;
 
 { Note: Wait for all jobs finalization
@@ -1842,5 +1754,6 @@ finalization
   TParallelJob.WaitAllParallelJobsFinalization;
 
   ParallelJobHolder.Free;
+  GroupHolder.Free;
 
 end.
