@@ -1,8 +1,8 @@
 program AppTest;
 
 uses
-  ParallelJobs in '..\..\Lib\ParallelJobs\ParallelJobs.pas',
   FastMM4,
+  ParallelJobs in '..\..\Lib\ParallelJobs\ParallelJobs.pas',  
   Forms,
   pasMain in 'pasMain.pas' {frmMain};
 
