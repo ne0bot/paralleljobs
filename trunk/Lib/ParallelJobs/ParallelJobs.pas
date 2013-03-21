@@ -7,9 +7,9 @@ unit ParallelJobs;
 {***************************************************************************
  * ParallelJobs Library
  *@module ParallelJobs
- *@version 2012.0.2.01
+ *@version 2013.0.2.02
  *@author Gilberto Saraiva - http://projects.pro.br/
- *@copyright Copyright © 2012, Gilberto Saraiva
+ *@copyright Copyright © 2013, Gilberto Saraiva
  *@homepage http://code.google.com/p/paralleljobs/
  *
  * License: MPL 1.1
@@ -400,7 +400,7 @@ end;
 function TChainedList.SetCurrentItem(const Item: PPointer): TChainedList;
 begin
   FNav[2] := Item;
-  Result := Self;  
+  Result := Self;
 end;
 
 function TChainedList.GetCurrent: PPointer;
@@ -615,9 +615,9 @@ asm
   jmp @@testInit
 @@test:
   call SwitchToThread
-@@testInit:
   push $00
   call Sleep
+@@testInit: 
   mov ecx, ebx
   db $B0,$00,$B2,$01
   lock cmpxchg [ecx], dl
@@ -642,7 +642,7 @@ var
 { Note: Setup the thunk.
   Specific hardcoded for paralleljobs needs
 }
-procedure SetupThunk(var AJobThunk: TJobsThunk; ASelf, ATarget, AParam: Pointer);
+procedure SetupThunk(var AJobThunk: TJobsThunk; const ASelf, ATarget, AParam: Pointer);
 const
   DefThunkPath: array [0..1] of Int64 = (204509162766520, 15269888);
 begin
@@ -720,7 +720,7 @@ begin
     Result := PParallelCall(Current^)
   else
     Result := nil;
-end; 
+end;
 
 var
   { Note:
@@ -857,45 +857,82 @@ end;
 { Note: Central operation point of ParallelJobs system.
 }
 function ParallelWorker(AParam: PParallelCall): Integer; stdcall;
+{$IFDEF WIN32}
 asm
-  CALL GetCurrentThreadId
-  MOV [EBX].TParallelCall.ID, EAX
-  MOV AL, [EBX].TParallelCall.SafeSection
-  CMP AL, $00
-  JZ @Init
-@CheckSafeSectionInit:                   
-  MOV EAX, [EBX].TParallelCall.SafeFlag  
-  CALL LockVar                           
-@Init:                                   
-  MOV AL, [EBX].TParallelCall.Mode       
-  CMP AL, $00                            
-  JZ @SelfMode                           
-  JMP @Direct                            
-@SelfMode:                               
-  LEA ECX, [EBX].TParallelCall.Thunk     
-  CALL ECX                               
-  MOV Result, EAX                        
-  JMP @CheckSafeSectionEnd               
-@Direct:                                 
-  MOV ECX, [EBX].TParallelCall.Call      
-  MOV EAX, [EBX].TParallelCall.Param     
-  PUSH EAX                               
-  CALL ECX                               
-  MOV Result, EAX                        
-  POP EAX                                
+  call GetCurrentThreadId
+  mov [ebx+$1C],eax
+  mov al,[ebx+$25]
+  cmp al,0
+  jz @Init
+@CheckSafeSectionInit:
+  mov eax,[ebx+$26]
+  call LockVar
+@Init:
+  mov al,[ebx]
+  cmp al,0
+  jz @SelfMode
+  jmp @Direct
+@SelfMode:
+  lea ecx,[ebx+$01]
+  call ecx
+  mov Result,eax
+  jmp @CheckSafeSectionEnd
+@Direct:
+  mov ecx,[ebx+$10]
+  mov eax,[ebx+$14]
+  push eax
+  call ecx
+  mov Result,eax
+  pop eax
 @CheckSafeSectionEnd:
-  MOV AL, [EBX].TParallelCall.SafeSection
-  CMP AL,0
-  JZ @End
-  MOV EAX, [EBX].TParallelCall.SafeFlag
-  CALL UnlockVar
+  mov al,[ebx+$25]
+  cmp al,0
+  jz @End
+  mov eax,[ebx+$26]
+  call UnlockVar
 @End:
-  LOCK ADD [EBX].TParallelCall.Terminated, $01
-  MOV EAX, AParam
-  PUSH EAX
-  CALL InternalEndParallelJob
-  POP EAX
+  lock add [ebx+$2A],$01
+  mov eax,AParam
+  push eax
+  call InternalEndParallelJob
+  pop eax
 end;
+{$ENDIF}
+{$IFDEF WIN64}
+type
+  TSelfFunction = function (AParam: Pointer): integer of object;
+  TDirectFunction = function (AParam: Pointer): integer;
+var
+  SelfCall: TSelfFunction;
+  DirectCall: TDirectFunction;
+begin
+  with AParam^ do
+  begin
+    ID := GetCurrentThreadId;
+    if SafeSection then
+      LockVar(SafeFlag^);
+
+    case Mode of
+      pcmSelfMode:
+      begin
+        @SelfCall := @AParam.Thunk;
+        SelfCall(AParam.Param);
+      end;
+      pcmDirect:
+      begin
+        @DirectCall := AParam.Call;
+        DirectCall(AParam.Param);
+      end;
+    end;
+
+    if SafeSection then
+      UnlockVar(SafeFlag^);
+
+    InterlockedIncrement(Terminated);
+  end;
+  InternalEndParallelJob(AParam);
+end;
+{$ENDIF}
 
 { Note: Initialize the Job structure
 }
@@ -905,7 +942,7 @@ var
   dwNull: DWORD;
 begin
   IsMultiThread := true;
-  Result := VirtualAlloc(nil, ((SizeOf(TParallelCall) div 8) + 1) * 8, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+  Result := VirtualAlloc(nil, ((SizeOf(TParallelCall) div SizeOf(Pointer)) + 1) * SizeOf(Pointer), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
   FillChar(Result^, SizeOf(TParallelCall), 0);
 
   if CurrentGroup <> nil then
